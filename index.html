@@ -1,0 +1,2951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Practice AI — Sales Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --navy:#1a1a2e;
+  --pink:#e91e8c;
+  --pink-light:#fdeef6;
+  --bg:#ffffff;
+  --bg-secondary:#f7f7fb;
+  --bg-tertiary:#f0f0f7;
+  --text:#1a1a2e;
+  --text-muted:#6b6b80;
+  --border:#e8e8f0;
+  --card-bg:#ffffff;
+  --shadow:0 2px 10px rgba(26,26,46,0.06);
+  --shadow-lg:0 8px 30px rgba(26,26,46,0.14);
+  --radius:12px;
+}
+[data-theme="dark"]{
+  --navy:#f0f0f5;
+  --pink:#ff4fa8;
+  --pink-light:#2a1a28;
+  --bg:#0f0f1a;
+  --bg-secondary:#16162a;
+  --bg-tertiary:#1e1e36;
+  --text:#f0f0f5;
+  --text-muted:#9797b0;
+  --border:#2a2a45;
+  --card-bg:#16162a;
+  --shadow:0 2px 10px rgba(0,0,0,0.4);
+  --shadow-lg:0 8px 30px rgba(0,0,0,0.55);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Inter',-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  transition:background .25s ease,color .25s ease;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;}
+.hidden{display:none !important;}
+.muted{color:var(--text-muted);}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+
+/* NAV */
+nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 28px;background:var(--bg);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(8px);
+}
+.nav-left{display:flex;align-items:center;gap:36px;}
+.logo{
+  font-weight:800;font-size:19px;letter-spacing:.5px;color:var(--navy);
+  display:flex;align-items:center;gap:8px;
+}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--pink);}
+.nav-tabs{display:flex;gap:4px;}
+.nav-tab{
+  padding:9px 15px;border-radius:9px;font-size:13.5px;font-weight:600;
+  color:var(--text-muted);cursor:pointer;white-space:nowrap;
+  transition:all .15s ease;
+}
+.nav-tab:hover{background:var(--bg-tertiary);color:var(--text);}
+.nav-tab.active{background:var(--pink);color:#fff;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.live-date{font-size:13px;color:var(--text-muted);font-weight:500;}
+.theme-toggle{
+  width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
+  background:var(--bg-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;transition:all .15s ease;
+}
+.theme-toggle:hover{border-color:var(--pink);}
+
+main{max-width:1360px;margin:0 auto;padding:28px 28px 80px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+h1.page-title{font-size:24px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+p.page-sub{color:var(--text-muted);font-size:14px;margin-bottom:24px;}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px;}
+.stat-card{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px;box-shadow:var(--shadow);
+}
+.stat-card .stat-label{font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;}
+.stat-card .stat-value{font-size:26px;font-weight:800;color:var(--navy);}
+.stat-card .stat-value.pink{color:var(--pink);}
+
+/* CARD / SECTION */
+.card{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);margin-bottom:22px;
+}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.card-title{font-size:16px;font-weight:700;color:var(--navy);}
+
+/* BUTTONS */
+.btn{
+  padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);
+  color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;font-family:inherit;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.btn:hover{border-color:var(--pink);color:var(--pink);}
+.btn-pink{background:var(--pink);border-color:var(--pink);color:#fff;}
+.btn-pink:hover{opacity:.9;color:#fff;filter:brightness(1.05);}
+.btn-navy{background:var(--navy);border-color:var(--navy);color:#fff;}
+.btn-navy:hover{opacity:.88;color:#fff;}
+.btn-sm{padding:6px 10px;font-size:12px;}
+.btn-ghost{background:transparent;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+select,input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=password],input[type=time],textarea{
+  padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);
+  color:var(--text);font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s ease;
+}
+select:focus,input:focus,textarea:focus{border-color:var(--pink);}
+textarea{resize:vertical;width:100%;line-height:1.5;}
+.search-input{min-width:220px;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{
+  text-align:left;padding:10px 12px;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;color:var(--text-muted);border-bottom:2px solid var(--border);white-space:nowrap;
+}
+td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr.cold-row td{opacity:.55;}
+tr:hover td{background:var(--bg-secondary);}
+.biz-name{font-weight:700;color:var(--navy);}
+.actions-cell{display:flex;gap:5px;flex-wrap:nowrap;}
+.actions-cell .btn{padding:6px 9px;font-size:11.5px;}
+.btn-delete-x{color:#c0334a;border-color:#c0334a;font-weight:800;padding:6px 9px;}
+.btn-delete-x:hover{background:#c0334a;color:#fff;}
+.btn-danger{background:#c0334a;border-color:#c0334a;color:#fff;}
+.btn-danger:hover{opacity:.88;color:#fff;}
+
+/* BADGES */
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-block;}
+.badge-connected{background:#e3f9ed;color:#1a9e5c;}
+.badge-notconnected{background:#fdf1e3;color:#c47f16;}
+[data-theme="dark"] .badge-connected{background:#0f2e1e;color:#4ade80;}
+[data-theme="dark"] .badge-notconnected{background:#332411;color:#fbbf24;}
+
+/* MODAL */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,15,26,.55);z-index:1000;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  animation:fadeIn .15s ease;
+}
+.modal{
+  background:var(--card-bg);border-radius:16px;max-width:620px;width:100%;max-height:88vh;
+  display:flex;flex-direction:column;box-shadow:var(--shadow-lg);
+}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-header h3{font-size:17px;font-weight:800;color:var(--navy);}
+.modal-close{cursor:pointer;font-size:20px;color:var(--text-muted);background:none;border:none;line-height:1;}
+.modal-body{padding:22px 24px;overflow-y:auto;flex:1;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+.form-row input,.form-row select,.form-row textarea{width:100%;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.ai-loading{color:var(--text-muted);font-size:13.5px;padding:20px 0;text-align:center;}
+.ai-loading::before{content:"✦ ";}
+#ai-draft-text{width:100%;font-family:'Inter',sans-serif;font-size:13.5px;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:10px;}
+.toast{
+  background:var(--navy);color:#fff;padding:13px 18px;border-radius:10px;font-size:13.5px;font-weight:600;
+  box-shadow:var(--shadow-lg);min-width:240px;animation:slideIn .2s ease;
+}
+.toast.error{background:#c0334a;}
+.toast.success{background:#1a9e5c;}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:none;}}
+
+/* CHAT WIDGET */
+.chat-widget{
+  background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  margin-top:26px;box-shadow:var(--shadow);
+}
+.chat-header{
+  padding:14px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;color:var(--navy);
+  display:flex;align-items:center;gap:8px;
+}
+.chat-messages{max-height:320px;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+.chat-msg{max-width:80%;padding:10px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
+.chat-msg.user{align-self:flex-end;background:var(--pink);color:#fff;border-bottom-right-radius:3px;}
+.chat-msg.ai{align-self:flex-start;background:var(--bg-secondary);border-bottom-left-radius:3px;}
+.chat-empty{color:var(--text-muted);font-size:13px;text-align:center;padding:16px 0;}
+.chat-input-row{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);align-items:center;}
+.chat-input-row input[type=text]{flex:1;}
+.chat-upload-btn{cursor:pointer;font-size:17px;padding:6px;}
+
+/* stage colors */
+.stage-select{border:none;font-weight:700;font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;appearance:none;text-align:center;}
+.stage-New\ Lead{background:#e5eaf5;color:#3a5bb8;}
+.stage-Nurturing{background:#f0e5f9;color:#7c3fc7;}
+.stage-Discovery\ Booked{background:#e0f4f4;color:#0e8a8a;}
+.stage-Discovery\ Done{background:#dceafd;color:#1f6fd6;}
+.stage-Proposal\ Sent{background:#fdf1d9;color:#c47f16;}
+.stage-Agreement\ Sent{background:#fde3f1;color:#c21e83;}
+.stage-Signed{background:#dcf7e6;color:#1a9e5c;}
+.stage-Lost{background:#f5dcdc;color:#c0334a;}
+
+/* proposal formatted view */
+.proposal-view{font-size:14px;line-height:1.7;}
+.proposal-view h2{font-size:17px;color:var(--pink);margin:22px 0 8px;font-weight:800;}
+.proposal-view h2:first-child{margin-top:0;}
+.proposal-view p{margin-bottom:10px;}
+.proposal-view ul{margin:8px 0 12px 20px;}
+.proposal-view li{margin-bottom:5px;}
+.proposal-view strong{color:var(--navy);}
+
+/* saved list items */
+.list-item{
+  display:flex;align-items:center;justify-content:space-between;padding:13px 16px;
+  border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg-secondary);
+  flex-wrap:wrap;gap:8px;
+}
+.list-item-title{font-weight:700;font-size:13.5px;color:var(--navy);}
+.list-item-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+
+/* alert banners */
+.alert-banner{padding:12px 16px;border-radius:10px;font-size:13.5px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.alert-red{background:#fce3e6;color:#a3213a;}
+.alert-amber{background:#fdf1d9;color:#a3690f;}
+[data-theme="dark"] .alert-red{background:#3a1420;color:#ff8fa3;}
+[data-theme="dark"] .alert-amber{background:#332411;color:#fbbf24;}
+
+/* settings */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.settings-section-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.conn-table{width:100%;font-size:13.5px;}
+.conn-table td{padding:10px 8px;border-bottom:1px solid var(--border);}
+.file-upload-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.file-upload-row label.upload-btn{
+  font-size:12px;font-weight:600;padding:7px 12px;border:1px dashed var(--border);border-radius:8px;
+  cursor:pointer;color:var(--text-muted);
+}
+.file-upload-row label.upload-btn:hover{border-color:var(--pink);color:var(--pink);}
+.attach-tag{font-size:12px;color:var(--pink);font-weight:600;}
+
+.section-label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin:22px 0 10px;}
+.two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;}
+@media(max-width:1100px){
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .settings-grid{grid-template-columns:1fr;}
+  .two-col{grid-template-columns:1fr;}
+  .nav-tabs{display:none;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <div class="logo"><span class="dot"></span>SP AI</div>
+    <div class="nav-tabs" id="navTabs">
+      <div class="nav-tab active" data-tab="pipeline">Sales Pipeline</div>
+      <div class="nav-tab" data-tab="inbox">Inbox Manager</div>
+      <div class="nav-tab" data-tab="proposal">Proposal Builder</div>
+      <div class="nav-tab" data-tab="callnotes">Call Notes</div>
+      <div class="nav-tab" data-tab="followup">Follow-Up Tracker</div>
+      <div class="nav-tab" data-tab="settings">Settings</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="live-date" id="liveDate"></div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ TAB 1: PIPELINE ============ -->
+<section class="tab-content active" id="tab-pipeline">
+  <h1 class="page-title">Sales Pipeline</h1>
+  <p class="page-sub">Every lead from first contact to signed contract.</p>
+
+  <div class="stat-grid" id="statGrid"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Active Leads</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+        <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderLeadsTable()">
+      <select id="filterStage" onchange="renderLeadsTable()"><option value="">All Stages</option></select>
+      <select id="filterSource" onchange="renderLeadsTable()"><option value="">All Sources</option></select>
+      <select id="filterPractice" onchange="renderLeadsTable()"><option value="">All Practice Types</option></select>
+    </div>
+    <div id="bulkDeleteBar" class="hidden" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <span id="bulkDeleteCount" style="font-weight:700;color:#c0334a;font-size:13.5px;"></span>
+      <button class="btn btn-danger btn-sm" onclick="openBulkDeleteModal()">Delete Selected</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th><input type="checkbox" id="selectAllLeads" onchange="toggleSelectAllLeads(this.checked)"></th>
+          <th>Business</th><th>Contact</th><th>Source</th><th>Stage</th><th>Qualification</th><th>Practice</th>
+          <th>Location</th><th>Value</th><th>Last Contact</th><th>Next Follow-Up</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="leadsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Cold Leads — No Contact in 14+ Days</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Business</th><th>Contact</th><th>Stage</th><th>Last Contact</th><th>Days Cold</th><th>Actions</th></tr></thead>
+        <tbody id="coldLeadsBody"></tbody>
+      </table>
+      <div id="coldLeadsEmpty" class="chat-empty hidden">No cold leads right now — nice work staying on top of things.</div>
+    </div>
+  </div>
+
+  <div id="chat-container-pipeline"></div>
+</section>
+
+<!-- ============ TAB 2: INBOX MANAGER ============ -->
+<section class="tab-content" id="tab-inbox">
+  <h1 class="page-title">Inbox Manager</h1>
+  <p class="page-sub">Paste any email and Claude drafts the reply in Mary's voice.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Process an Email</div>
+      <button class="btn" id="btnConnectGmail" onclick="connectGmail()" style="display:none;">Connect Gmail</button>
+    </div>
+    <div class="form-row">
+      <label>Paste email content</label>
+      <textarea id="inboxPasteArea" rows="7" placeholder="Paste the full email content here, including sender info if available..."></textarea>
+      <div class="file-upload-row">
+        <label class="upload-btn">📎 Attach file (PDF / DOCX / TXT / image)<input type="file" id="inboxFileInput" style="display:none;" onchange="handleFileUpload('inboxFileInput','inboxPasteArea','inbox')"></label>
+        <span class="attach-tag hidden" id="inboxAttachTag"></span>
+      </div>
+    </div>
+    <button class="btn btn-pink" onclick="processInboxEmail()">Process with Claude</button>
+    <div id="inboxResult" style="margin-top:18px;"></div>
+  </div>
+
+  <div id="gmailQueueCard" class="card hidden">
+    <div class="card-header"><div class="card-title">Gmail — Prioritized Queue</div></div>
+    <div id="gmailQueueBody"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Reschedule Requests</div></div>
+    <div id="rescheduleList"></div>
+    <div id="rescheduleEmpty" class="chat-empty">No reschedule requests right now.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Processed Email History</div></div>
+    <div id="inboxHistory"></div>
+    <div id="inboxHistoryEmpty" class="chat-empty">No emails processed yet.</div>
+  </div>
+
+  <div id="chat-container-inbox"></div>
+</section>
+
+<!-- ============ TAB 4: PROPOSAL BUILDER ============ -->
+<section class="tab-content" id="tab-proposal">
+  <h1 class="page-title">Proposal Builder</h1>
+  <p class="page-sub">Paste discovery notes or a transcript — Claude builds the full deck.</p>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Discovery Notes</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" id="btnLoadReadai" onclick="loadFromReadai()" style="display:none;">Load from Read.ai</button>
+            <button class="btn" id="btnLoadOtter" onclick="loadFromOtter()" style="display:none;">Load from Otter.ai</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <textarea id="proposalNotes" rows="9" placeholder="Paste discovery call notes, a Read.ai transcript, or any raw notes about the prospect..."></textarea>
+          <div class="file-upload-row">
+            <label class="upload-btn">📎 Attach file (PDF / DOCX / TXT / image)<input type="file" id="proposalFileInput" style="display:none;" onchange="handleFileUpload('proposalFileInput','proposalNotes','proposal')"></label>
+            <span class="attach-tag hidden" id="proposalAttachTag"></span>
+          </div>
+        </div>
+        <button class="btn" onclick="analyzeProposalNotes()">Analyze Notes with Claude</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px;">Prospect Details</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Business Name</label><input type="text" id="pBusinessName"></div>
+          <div class="form-row"><label>Contact Name</label><input type="text" id="pContactName"></div>
+          <div class="form-row"><label>Practice Type</label>
+            <select id="pPracticeType"><option>Med Spa</option><option>Plastic Surgery</option><option>Dental</option><option>Other</option></select>
+          </div>
+          <div class="form-row"><label>Location</label><input type="text" id="pLocation"></div>
+          <div class="form-row"><label>Proposed Investment ($/mo)</label><input type="number" id="pInvestment"></div>
+          <div class="form-row"><label>Timeline</label><input type="text" id="pTimeline" placeholder="e.g. Start within 2 weeks"></div>
+        </div>
+        <div class="form-row"><label>Pain Points</label><textarea id="pPainPoints" rows="2"></textarea></div>
+        <div class="form-row"><label>Goals</label><textarea id="pGoals" rows="2"></textarea></div>
+        <div class="form-row"><label>Proposed Services</label><textarea id="pServices" rows="2"></textarea></div>
+        <button class="btn btn-pink" onclick="generateProposal()">Generate Proposal</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Generated Proposal</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm" onclick="copyProposal()">Copy Full Proposal</button>
+            <button class="btn btn-sm" onclick="generateCanvaBrief()">Canva Brief</button>
+          </div>
+        </div>
+        <div id="proposalOutput" class="proposal-view"><p class="muted">Your generated proposal will appear here.</p></div>
+        <div id="proposalSaveRow" class="hidden" style="margin-top:16px;">
+          <button class="btn btn-navy" onclick="saveProposal()">Save Proposal</button>
+        </div>
+      </div>
+      <div id="canvaBriefCard" class="card hidden">
+        <div class="card-title" style="margin-bottom:10px;">Canva Design Brief</div>
+        <div id="canvaBriefOutput" class="proposal-view"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Saved Proposals</div></div>
+    <div id="savedProposalsList"></div>
+    <div id="savedProposalsEmpty" class="chat-empty">No proposals saved yet.</div>
+  </div>
+
+  <div id="chat-container-proposal"></div>
+</section>
+
+<!-- ============ TAB: CALL NOTES ============ -->
+<section class="tab-content" id="tab-callnotes">
+  <h1 class="page-title">Call Notes</h1>
+  <p class="page-sub">Take live notes during a call and let Claude turn them into a structured summary.</p>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">Live Note Taker</div>
+      <div class="form-grid">
+        <div class="form-row"><label>Lead Name</label>
+          <input type="text" id="clLeadName" list="callLeadOptions" placeholder="Select or type a lead name...">
+          <datalist id="callLeadOptions"></datalist>
+        </div>
+        <div class="form-row"><label>Call Type</label>
+          <select id="clCallType"><option>Discovery Call</option><option>Follow-Up Call</option><option>Check-In Call</option><option>Other</option></select>
+        </div>
+        <div class="form-row"><label>Call Date</label><input type="date" id="clCallDate"></div>
+        <div class="form-row"><label>Caller Name</label><input type="text" id="clCallerName" placeholder="Who you spoke with"></div>
+      </div>
+      <div class="form-row">
+        <label>Quick Notes</label>
+        <textarea id="clQuickNotes" rows="12" placeholder="Type bullet points as the call happens — anything said, questions asked, pain points mentioned, objections, next steps discussed..."></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="btn" id="btnStartCallTimer" onclick="startCallTimer()">▶ Start Call Timer</button>
+        <span id="callTimerDisplay" style="font-weight:700;color:var(--pink);font-size:15px;">00:00</span>
+        <button class="btn btn-pink" onclick="processCallNotes()">Stop and Process</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">Processed Summary</div>
+      <div id="callSummaryOutput" class="proposal-view"><p class="muted">Your call summary will appear here once processed.</p></div>
+      <div id="callActionsRow" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn btn-navy btn-sm" onclick="sendCallToProposal()">Send to Proposal Builder</button>
+        <button class="btn btn-sm" onclick="logCallToHubspot()">Log to HubSpot</button>
+        <button class="btn btn-pink btn-sm" onclick="saveCallNotes()">Save Notes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Saved Calls</div></div>
+    <div id="savedCallsList"></div>
+    <div id="savedCallsEmpty" class="chat-empty">No call notes saved yet.</div>
+  </div>
+
+  <div id="chat-container-callnotes"></div>
+</section>
+
+<!-- ============ TAB 5: FOLLOW-UP TRACKER ============ -->
+<section class="tab-content" id="tab-followup">
+  <h1 class="page-title">Follow-Up Tracker</h1>
+  <p class="page-sub">Every proposal and agreement that's waiting on a reply.</p>
+
+  <div id="followupAlerts"></div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Follow-Ups</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Lead / Business</th><th>Sent</th><th>Date Sent</th><th>Follow-Ups</th>
+          <th>Next Follow-Up</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="followupTableBody"></tbody>
+      </table>
+      <div id="followupEmpty" class="chat-empty hidden">No proposals or agreements out for follow-up yet.</div>
+    </div>
+  </div>
+
+  <div id="chat-container-followup"></div>
+</section>
+
+<!-- ============ TAB 6: SETTINGS ============ -->
+<section class="tab-content" id="tab-settings">
+  <h1 class="page-title">Settings</h1>
+  <p class="page-sub">Connections, credentials, and Mary's voice profile — all in one place.</p>
+
+  <div class="settings-grid">
+    <div>
+      <div class="card">
+        <div class="settings-section-title">🤖 AI</div>
+        <div class="form-row"><label>Anthropic API Key <span id="badge-anthropic_key"></span></label>
+          <input type="password" id="anthropic_key" placeholder="sk-ant-..."></div>
+        <button class="btn btn-pink btn-sm" onclick="saveSetting('anthropic_key')">Save</button>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🔗 CRM</div>
+        <div class="form-row"><label>HubSpot API Key <span id="badge-hubspot_key"></span></label>
+          <input type="password" id="hubspot_key"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="saveSetting('hubspot_key')">Save</button>
+          <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
+        </div>
+        <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">✉️ Email</div>
+        <div class="form-row"><label>Gmail API Key <span id="badge-gmail_key"></span></label>
+          <input type="password" id="gmail_key"></div>
+        <button class="btn btn-sm" onclick="saveSetting('gmail_key')">Save</button>
+        <div class="form-row" style="margin-top:14px;"><label>Mary's Email Address</label>
+          <input type="text" id="mary_email" placeholder="mary@socialpractice.co"></div>
+        <div class="form-row"><label>Default Reply Name</label>
+          <input type="text" id="reply_name" placeholder="Zane, on behalf of Mary Robb"></div>
+        <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="settings-section-title">📞 Calls &amp; Proposals</div>
+        <div class="form-row"><label>Read.ai API Key <span id="badge-readai_key"></span></label><input type="password" id="readai_key" placeholder="Paste your Read.ai API key here"></div>
+        <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at read.ai</div>
+        <button class="btn btn-sm" onclick="saveSetting('readai_key')">Save</button>
+        <div class="form-row" style="margin-top:14px;"><label>Prospero API Key <span id="badge-prospero_key"></span></label><input type="password" id="prospero_key"></div>
+        <button class="btn btn-sm" onclick="saveSetting('prospero_key')">Save</button>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">📱 Phone Calls</div>
+        <div class="form-row"><label>Otter.ai API Key <span id="badge-otter_key"></span></label><input type="password" id="otter_key"></div>
+        <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at otter.ai/api</div>
+        <button class="btn btn-sm" onclick="saveSetting('otter_key')">Save</button>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🗄️ Database</div>
+        <div class="form-row"><label>Supabase Project URL</label><input type="text" id="supabase_url" placeholder="https://xxxx.supabase.co"></div>
+        <div class="form-row"><label>Supabase Anon Key</label><input type="password" id="supabase_anon_key"></div>
+        <div class="form-row" style="display:flex;align-items:center;gap:10px;">
+          <label style="margin:0;">Enable Supabase</label>
+          <input type="checkbox" id="supabase_enabled" style="width:auto;" onchange="toggleSupabaseEnabled()">
+          <span id="supabaseStatusBadge"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button class="btn btn-sm" onclick="saveSupabaseSettings()">Save</button>
+          <button class="btn btn-sm" onclick="testSupabaseConnection()">Test Connection</button>
+          <button class="btn btn-navy btn-sm" onclick="migrateToSupabase()">Migrate to Supabase</button>
+        </div>
+        <div id="migrateProgress" class="hidden" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🔌 Integrations (Backend Automation)</div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">These power the async qualification funnel running in Supabase Edge Functions — separate from the API keys elsewhere on this page, which power this app's own in-browser features. Each one goes live the moment you save it here, no redeploy needed.</p>
+        <div class="form-row"><label>Admin Password</label>
+          <input type="password" id="integrationsAdminPassword" placeholder="Set once via the ADMIN_PANEL_PASSWORD secret"></div>
+        <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
+        <div id="integrationRows"></div>
+        <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🎯 Qualification Thresholds</div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Leave at $0 until you set real numbers.</p>
+        <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
+          <input type="number" id="qc_min_budget_floor" placeholder="0"></div>
+        <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
+          <input type="number" id="qc_ideal_budget_threshold" placeholder="0"></div>
+        <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
+        <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
+        <div id="voiceSamplesList"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+          <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
+          <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
+        </div>
+        <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
+
+        <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
+        <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
+        <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
+        <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
+        <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
+        <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
+        <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
+        <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
+
+        <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
+        <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="settings-section-title">📊 Connection Status</div>
+        <table class="conn-table" id="connStatusTable"></table>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div id="modalRoot"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ===================== CONSTANTS ===================== */
+const STAGES = ["New Lead","Nurturing","Discovery Booked","Discovery Done","Proposal Sent","Agreement Sent","Signed","Lost"];
+const SOURCES = ["HubSpot","Referral","Website","Cold Outreach","Other"];
+const PRACTICE_TYPES = ["Med Spa","Plastic Surgery","Dental","Other"];
+const MODEL = "claude-sonnet-4-6";
+
+let supabaseClient = null;
+let CONFIG = { supabase: { enabled: false } };
+let currentProposalLeadId = null;
+let chatHistories = { pipeline: [], inbox: [], proposal: [], followup: [] };
+let lastInboxProcessed = null;
+let dmAttachments = {};
+let genericAttachments = {};
+
+/* ===================== UTIL ===================== */
+function uuid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c=='x'?r:(r&0x3|0x8)).toString(16);})); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function localDateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayISO(){ return localDateStr(new Date()); }
+function addDays(dateStr,n){ const d = new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return localDateStr(d); }
+function daysBetween(a,b){ return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000); }
+function addBusinessDays(dateStr,n){
+  let d = new Date(dateStr+'T00:00:00');
+  let added=0;
+  while(added<n){
+    d.setDate(d.getDate()+1);
+    const day=d.getDay();
+    if(day!==0 && day!==6) added++;
+  }
+  return localDateStr(d);
+}
+function fmtDate(d){ if(!d) return '—'; try{ return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }catch(e){ return d; } }
+function fmtMoney(n){ n=Number(n)||0; return '$'+n.toLocaleString('en-US'); }
+function toast(msg,type){
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className='toast'+(type?' '+type:'');
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),4200);
+}
+
+/* ===================== DB LAYER (localStorage <-> Supabase) ===================== */
+function initSupabase(){
+  const url = localStorage.getItem('supabase_url');
+  const key = localStorage.getItem('supabase_anon_key');
+  const enabled = localStorage.getItem('supabase_enabled') === 'true';
+  if(url && key && enabled){
+    try{
+      supabaseClient = supabase.createClient(url,key);
+      CONFIG.supabase.enabled = true;
+    }catch(e){ supabaseClient=null; CONFIG.supabase.enabled=false; }
+  } else {
+    supabaseClient = null;
+    CONFIG.supabase.enabled = false;
+  }
+  updateSupabaseStatusBadge();
+}
+
+function makeTable(tableName, storageKey){
+  return {
+    async getAll(){
+      if(supabaseClient){
+        const { data, error } = await supabaseClient.from(tableName).select('*').order('created_at',{ascending:false});
+        if(!error) return data || [];
+      }
+      return JSON.parse(localStorage.getItem(storageKey) || '[]');
+    },
+    async insert(record){
+      if(!record.id) record.id = uuid();
+      if(!record.created_at) record.created_at = new Date().toISOString();
+      if(supabaseClient){
+        const { data, error } = await supabaseClient.from(tableName).insert([record]).select();
+        if(!error) return data[0];
+      }
+      const rows = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      rows.unshift(record);
+      localStorage.setItem(storageKey, JSON.stringify(rows));
+      return record;
+    },
+    async update(id, changes){
+      changes.updated_at = new Date().toISOString();
+      if(supabaseClient){
+        const { error } = await supabaseClient.from(tableName).update(changes).eq('id', id);
+        if(!error) return;
+      }
+      const rows = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const i = rows.findIndex(r=>r.id===id);
+      if(i!==-1){ rows[i] = {...rows[i], ...changes}; localStorage.setItem(storageKey, JSON.stringify(rows)); }
+    },
+    async remove(id){
+      if(supabaseClient){
+        const { error } = await supabaseClient.from(tableName).delete().eq('id', id);
+        if(!error) return;
+      }
+      const rows = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      localStorage.setItem(storageKey, JSON.stringify(rows.filter(r=>r.id!==id)));
+    },
+    localAll(){ return JSON.parse(localStorage.getItem(storageKey) || '[]'); }
+  };
+}
+const LeadsDB = makeTable('leads','sp_leads');
+const CommLogDB = makeTable('comm_log','sp_comm_log');
+const ProposalsDB = makeTable('proposals','sp_proposals');
+const FollowupsDB = makeTable('followups','sp_followups');
+const CallNotesDB = makeTable('call_notes','sp_call_notes');
+
+/* ===================== HUBSPOT ===================== */
+const HUBSPOT = {
+
+  baseUrl: 'https://api.hubapi.com',
+
+  getKey(){
+    return localStorage.getItem('hubspot_key') || '';
+  },
+
+  isReady(){
+    return !!this.getKey();
+  },
+
+  headers(){
+    return {
+      'Authorization': `Bearer ${this.getKey()}`,
+      'Content-Type': 'application/json'
+    };
+  },
+
+  // PULL ALL CONTACTS FROM HUBSPOT
+  async getContacts(){
+    if(!this.isReady()) return [];
+    const res = await fetch(`${this.baseUrl}/crm/v3/objects/contacts?limit=100&properties=firstname,lastname,email,phone,company,hs_lead_status`, {
+      headers: this.headers()
+    });
+    const data = await res.json();
+    return data.results || [];
+  },
+
+  // PULL ALL DEALS FROM HUBSPOT
+  async getDeals(){
+    if(!this.isReady()) return [];
+    const res = await fetch(`${this.baseUrl}/crm/v3/objects/deals?limit=100&properties=dealname,dealstage,amount,closedate,hubspot_owner_id`, {
+      headers: this.headers()
+    });
+    const data = await res.json();
+    return data.results || [];
+  },
+
+  // CREATE A NEW CONTACT IN HUBSPOT
+  async createContact(lead){
+    if(!this.isReady()) return null;
+    const res = await fetch(`${this.baseUrl}/crm/v3/objects/contacts`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          firstname: lead.contact_name?.split(' ')[0] || '',
+          lastname: lead.contact_name?.split(' ').slice(1).join(' ') || '',
+          email: lead.email || '',
+          phone: lead.phone || '',
+          company: lead.business_name || '',
+          hs_lead_status: lead.stage || 'NEW'
+        }
+      })
+    });
+    const data = await res.json();
+    return data.id || null;
+  },
+
+  // UPDATE A CONTACT IN HUBSPOT
+  async updateContact(hubspotId, changes){
+    if(!this.isReady() || !hubspotId) return;
+    await fetch(`${this.baseUrl}/crm/v3/objects/contacts/${hubspotId}`, {
+      method: 'PATCH',
+      headers: this.headers(),
+      body: JSON.stringify({ properties: changes })
+    });
+  },
+
+  // CREATE A DEAL IN HUBSPOT
+  async createDeal(lead){
+    if(!this.isReady()) return null;
+    const res = await fetch(`${this.baseUrl}/crm/v3/objects/deals`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          dealname: lead.business_name + ' — Social Practice',
+          dealstage: mapStageToPipeline(lead.stage),
+          amount: lead.proposal_value || 0,
+          closedate: lead.next_followup || ''
+        }
+      })
+    });
+    const data = await res.json();
+    return data.id || null;
+  },
+
+  // UPDATE DEAL STAGE IN HUBSPOT
+  async updateDealStage(dealId, stage){
+    if(!this.isReady() || !dealId) return;
+    await fetch(`${this.baseUrl}/crm/v3/objects/deals/${dealId}`, {
+      method: 'PATCH',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          dealstage: mapStageToPipeline(stage)
+        }
+      })
+    });
+  },
+
+  // UPDATE DEAL AMOUNT IN HUBSPOT
+  async updateDealAmount(dealId, amount){
+    if(!this.isReady() || !dealId) return;
+    await fetch(`${this.baseUrl}/crm/v3/objects/deals/${dealId}`, {
+      method: 'PATCH',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          amount: amount || 0
+        }
+      })
+    });
+  },
+
+  // LOG AN EMAIL ACTIVITY IN HUBSPOT
+  async logEmail(contactId, subject, body){
+    if(!this.isReady() || !contactId) return;
+    await fetch(`${this.baseUrl}/crm/v3/objects/emails`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          hs_email_direction: 'EMAIL',
+          hs_email_status: 'SENT',
+          hs_email_subject: subject,
+          hs_email_text: body
+        },
+        associations: [{
+          to: { id: contactId },
+          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 182 }]
+        }]
+      })
+    });
+  },
+
+  // LOG A CALL NOTE IN HUBSPOT
+  async logCall(contactId, notes){
+    if(!this.isReady() || !contactId) return;
+    await fetch(`${this.baseUrl}/crm/v3/objects/notes`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        properties: {
+          hs_note_body: notes,
+          hs_timestamp: new Date().toISOString()
+        },
+        associations: [{
+          to: { id: contactId },
+          types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }]
+        }]
+      })
+    });
+  },
+
+  // ASSOCIATE CONTACT WITH DEAL
+  async associateContactDeal(contactId, dealId){
+    if(!this.isReady() || !contactId || !dealId) return;
+    await fetch(`${this.baseUrl}/crm/v4/objects/contacts/${contactId}/associations/deals/${dealId}`, {
+      method: 'PUT',
+      headers: this.headers(),
+      body: JSON.stringify([{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 5 }])
+    });
+  }
+};
+
+// MAP YOUR STAGES TO HUBSPOT PIPELINE STAGES
+function mapStageToPipeline(stage){
+  const map = {
+    'New Lead': 'appointmentscheduled',
+    'Nurturing': 'qualifiedtobuy',
+    'Discovery Booked': 'appointmentscheduled',
+    'Discovery Done': 'presentationscheduled',
+    'Proposal Sent': 'decisionmakerboughtin',
+    'Agreement Sent': 'contractsent',
+    'Signed': 'closedwon',
+    'Lost': 'closedlost'
+  };
+  return map[stage] || 'appointmentscheduled';
+}
+
+// MAP HUBSPOT PIPELINE STAGES BACK TO OUR STAGES (used when syncing FROM HubSpot)
+function reverseMapPipelineStage(hsStage){
+  const map = {
+    'appointmentscheduled': 'Discovery Booked',
+    'qualifiedtobuy': 'Nurturing',
+    'presentationscheduled': 'Discovery Done',
+    'decisionmakerboughtin': 'Proposal Sent',
+    'contractsent': 'Agreement Sent',
+    'closedwon': 'Signed',
+    'closedlost': 'Lost'
+  };
+  return map[hsStage] || null;
+}
+
+// PUSH A NEWLY CREATED LEAD TO HUBSPOT AS A CONTACT + DEAL
+async function pushLeadToHubspot(lead){
+  if(!HUBSPOT.isReady() || !lead) return;
+  try{
+    const contactId = await HUBSPOT.createContact(lead);
+    let dealId = null;
+    if(contactId){
+      dealId = await HUBSPOT.createDeal(lead);
+      if(dealId) await HUBSPOT.associateContactDeal(contactId, dealId);
+    }
+    if(contactId || dealId){
+      await LeadsDB.update(lead.id, { hubspot_contact_id: contactId || null, hubspot_deal_id: dealId || null });
+    }
+  }catch(e){ console.warn('HubSpot sync failed for new lead:', e); }
+}
+
+// PUSH A STAGE CHANGE TO THE LEAD'S HUBSPOT DEAL
+async function syncStageToHubspot(lead, stage){
+  if(!HUBSPOT.isReady() || !lead || !lead.hubspot_deal_id) return;
+  try{ await HUBSPOT.updateDealStage(lead.hubspot_deal_id, stage); }
+  catch(e){ console.warn('HubSpot deal stage update failed:', e); }
+}
+
+/* ===================== MARY'S VOICE PROFILE ===================== */
+let voiceSampleSeq = 0;
+let cachedVoiceProfile = null;
+
+function addVoiceSample(prefillValue){
+  voiceSampleSeq++;
+  const id = 'voiceSample'+voiceSampleSeq;
+  document.getElementById('voiceSamplesList').insertAdjacentHTML('beforeend', `
+    <div class="form-row" id="wrap-${id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <label style="margin:0;">Sample Email</label>
+        <button type="button" class="btn btn-sm btn-delete-x" onclick="removeVoiceSample('${id}')">✕</button>
+      </div>
+      <textarea id="${id}" rows="5" placeholder="Paste a real email Mary wrote...">${prefillValue ? escapeHtml(prefillValue) : ''}</textarea>
+    </div>`);
+}
+function removeVoiceSample(id){
+  const el = document.getElementById('wrap-'+id);
+  if(el) el.remove();
+}
+function getVoiceSamples(){
+  return Array.from(document.querySelectorAll('#voiceSamplesList textarea')).map(t=>t.value.trim()).filter(Boolean);
+}
+async function generateVoiceProfile(){
+  const samples = getVoiceSamples();
+  if(!samples.length){ toast('Add at least one sample email first.','error'); return; }
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){ toast('Add your Anthropic API key in Settings to generate a voice profile.','error'); return; }
+  toast('Analyzing samples with Claude...');
+  const result = await callClaude(
+    'You are analyzing real email samples to build a structured voice profile for Mary. Extract patterns, do not invent anything not evidenced in the samples.',
+    `Email samples:\n\n${samples.map((s,i)=>`--- Sample ${i+1} ---\n${s}`).join('\n\n')}\n\nOutput ONLY valid JSON (no markdown fences) with exactly these keys:\ntone_summary: one line\nenergy_level: calm / warm / high-energy / direct — pick what fits\nformality_level: one line\ncommon_openers: array of strings — how she typically opens an email\ncommon_closers: array of strings — how she typically signs off\nsignature_phrases: array of strings — words or phrases she repeats across samples\nnever_does: array of strings — things notably absent (no jargon, no exclamation points, etc.)\nconfidence: "low" if fewer than 3 samples were provided, otherwise "normal"`
+  );
+  if(!result.ok){ toast(result.message,'error'); return; }
+  try{
+    const parsed = JSON.parse(stripJsonFence(result.text));
+    document.getElementById('vp_tone_summary').value = parsed.tone_summary || '';
+    document.getElementById('vp_energy_level').value = parsed.energy_level || '';
+    document.getElementById('vp_formality_level').value = parsed.formality_level || '';
+    document.getElementById('vp_common_openers').value = (parsed.common_openers||[]).join('\n');
+    document.getElementById('vp_common_closers').value = (parsed.common_closers||[]).join('\n');
+    document.getElementById('vp_signature_phrases').value = (parsed.signature_phrases||[]).join('\n');
+    document.getElementById('vp_never_does').value = (parsed.never_does||[]).join('\n');
+    const confEl = document.getElementById('voiceProfileConfidence');
+    confEl.textContent = (parsed.confidence==='low' || samples.length<3)
+      ? 'Profile confidence: low (fewer than 3 samples provided). Add more samples and regenerate for a stronger profile.'
+      : 'Profile generated — review the fields below, then Save.';
+    toast('Voice profile generated — review and save.','success');
+  }catch(e){
+    toast("Could not parse Claude's response as a structured profile. Try again.",'error');
+  }
+}
+async function saveVoiceProfile(){
+  const profile = {
+    raw_samples: getVoiceSamples(),
+    tone_summary: document.getElementById('vp_tone_summary').value.trim(),
+    energy_level: document.getElementById('vp_energy_level').value.trim(),
+    formality_level: document.getElementById('vp_formality_level').value.trim(),
+    common_openers: document.getElementById('vp_common_openers').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    common_closers: document.getElementById('vp_common_closers').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    signature_phrases: document.getElementById('vp_signature_phrases').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    never_does: document.getElementById('vp_never_does').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    last_updated: new Date().toISOString()
+  };
+  localStorage.setItem('voice_profile_cache', JSON.stringify(profile));
+  cachedVoiceProfile = profile;
+  if(supabaseClient){
+    const { error } = await supabaseClient.from('voice_profile').upsert({ id:1, ...profile });
+    if(error){ toast('Saved locally, but Supabase save failed: '+error.message,'error'); return; }
+  }
+  toast('Voice profile saved.','success');
+  document.getElementById('voiceProfileStatus').textContent = `Saved ${new Date().toLocaleString()}.`;
+}
+async function getVoiceProfileData(){
+  if(supabaseClient){
+    const { data, error } = await supabaseClient.from('voice_profile').select('*').eq('id',1).maybeSingle();
+    if(!error && data && (data.tone_summary || (data.raw_samples||[]).length)){ cachedVoiceProfile = data; return data; }
+  }
+  if(cachedVoiceProfile) return cachedVoiceProfile;
+  const raw = localStorage.getItem('voice_profile_cache');
+  if(raw){ try{ cachedVoiceProfile = JSON.parse(raw); return cachedVoiceProfile; }catch(e){} }
+  return null;
+}
+async function loadVoiceProfileIntoSettings(){
+  const profile = await getVoiceProfileData();
+  document.getElementById('voiceSamplesList').innerHTML = '';
+  voiceSampleSeq = 0;
+  if(!profile){ addVoiceSample(); return; }
+  document.getElementById('vp_tone_summary').value = profile.tone_summary || '';
+  document.getElementById('vp_energy_level').value = profile.energy_level || '';
+  document.getElementById('vp_formality_level').value = profile.formality_level || '';
+  document.getElementById('vp_common_openers').value = (profile.common_openers||[]).join('\n');
+  document.getElementById('vp_common_closers').value = (profile.common_closers||[]).join('\n');
+  document.getElementById('vp_signature_phrases').value = (profile.signature_phrases||[]).join('\n');
+  document.getElementById('vp_never_does').value = (profile.never_does||[]).join('\n');
+  if(profile.raw_samples && profile.raw_samples.length){
+    profile.raw_samples.forEach(s=>addVoiceSample(s));
+  } else {
+    addVoiceSample();
+  }
+  if(profile.last_updated) document.getElementById('voiceProfileStatus').textContent = `Last saved ${new Date(profile.last_updated).toLocaleString()}.`;
+}
+
+/* ===================== SETTINGS ===================== */
+function saveSetting(key){
+  const el = document.getElementById(key);
+  if(!el) return;
+  localStorage.setItem(key, el.value.trim());
+  toast('Saved.','success');
+  refreshConnectionBadges();
+  refreshConnectionSlots();
+}
+function loadSettingsIntoForm(){
+  ['anthropic_key','hubspot_key','gmail_key','mary_email','reply_name',
+   'readai_key','otter_key','prospero_key',
+   'supabase_url','supabase_anon_key'].forEach(k=>{
+    const el = document.getElementById(k);
+    if(el) el.value = localStorage.getItem(k) || '';
+  });
+  document.getElementById('supabase_enabled').checked = localStorage.getItem('supabase_enabled') === 'true';
+  refreshConnectionBadges();
+  loadVoiceProfileIntoSettings();
+}
+function refreshConnectionBadges(){
+  ['anthropic_key','hubspot_key','gmail_key','readai_key','otter_key','prospero_key'].forEach(k=>{
+    const badge = document.getElementById('badge-'+k);
+    if(!badge) return;
+    const has = !!localStorage.getItem(k);
+    badge.innerHTML = has ? '<span class="badge badge-connected">Connected</span>' : '<span class="badge badge-notconnected">Not Connected</span>';
+  });
+  renderConnStatusTable();
+  updateHubspotStatusUI();
+}
+async function testHubspotConnection(){
+  if(!HUBSPOT.isReady()){ toast('Add a HubSpot API key first.','error'); return; }
+  const block = document.getElementById('hubspotStatusBlock');
+  if(block) block.textContent = 'Testing connection...';
+  try{
+    const [contacts, deals] = await Promise.all([HUBSPOT.getContacts(), HUBSPOT.getDeals()]);
+    localStorage.setItem('hubspot_contact_count', String(contacts.length));
+    localStorage.setItem('hubspot_deal_count', String(deals.length));
+    toast('HubSpot connection successful.','success');
+  }catch(e){
+    localStorage.removeItem('hubspot_contact_count');
+    localStorage.removeItem('hubspot_deal_count');
+    toast('HubSpot connection failed (likely CORS from the browser, or an invalid key): '+e.message,'error');
+  }
+  updateHubspotStatusUI();
+}
+function updateHubspotStatusUI(){
+  const block = document.getElementById('hubspotStatusBlock');
+  const badge = document.getElementById('badge-hubspot_key');
+  if(!block || !badge) return;
+  if(!HUBSPOT.isReady()){
+    block.textContent = '';
+    badge.innerHTML = '<span class="badge badge-notconnected">Not Connected</span>';
+    return;
+  }
+  const contactCount = localStorage.getItem('hubspot_contact_count');
+  const dealCount = localStorage.getItem('hubspot_deal_count');
+  const lastSynced = localStorage.getItem('hubspot_last_synced');
+  badge.innerHTML = contactCount !== null
+    ? `<span class="badge badge-connected">Connected — ${contactCount} contact${contactCount==='1'?'':'s'}</span>`
+    : '<span class="badge badge-connected">Connected</span>';
+  let text = '';
+  if(contactCount !== null) text += `${contactCount} contacts, ${dealCount||0} deals in HubSpot. `;
+  text += lastSynced ? `Last synced ${new Date(lastSynced).toLocaleString()}.` : 'Not synced yet.';
+  block.textContent = text;
+}
+function renderConnStatusTable(){
+  const items = [
+    ['Claude AI (Anthropic)','anthropic_key'],
+    ['HubSpot','hubspot_key'],
+    ['Gmail','gmail_key'],
+    ['Read.ai','readai_key'],
+    ['Otter.ai','otter_key'],
+    ['Prospero','prospero_key'],
+  ];
+  let html = '';
+  items.forEach(([label,key])=>{
+    const has = !!localStorage.getItem(key);
+    html += `<tr><td>${label}</td><td style="text-align:right;">${has?'<span class="badge badge-connected">Connected</span>':'<span class="badge badge-notconnected">Not Connected</span>'}</td></tr>`;
+  });
+  const supStatus = supabaseClient ? '<span class="badge badge-connected">Connected to Supabase</span>' : '<span class="badge badge-notconnected">Using localStorage</span>';
+  html += `<tr><td>Database</td><td style="text-align:right;">${supStatus}</td></tr>`;
+  document.getElementById('connStatusTable').innerHTML = html;
+}
+function updateSupabaseStatusBadge(){
+  const el = document.getElementById('supabaseStatusBadge');
+  if(!el) return;
+  el.innerHTML = supabaseClient ? '<span class="badge badge-connected">Connected to Supabase</span>' : '<span class="badge badge-notconnected">Using localStorage</span>';
+  renderConnStatusTable();
+}
+function saveSupabaseSettings(){
+  localStorage.setItem('supabase_url', document.getElementById('supabase_url').value.trim());
+  localStorage.setItem('supabase_anon_key', document.getElementById('supabase_anon_key').value.trim());
+  localStorage.setItem('supabase_enabled', document.getElementById('supabase_enabled').checked ? 'true':'false');
+  initSupabase();
+  toast('Database settings saved.','success');
+  refreshConnectionSlots();
+  loadQualificationConfig();
+  renderRescheduleFlags();
+  loadIntegrationsStatus();
+}
+function toggleSupabaseEnabled(){ saveSupabaseSettings(); }
+async function testSupabaseConnection(){
+  const url = document.getElementById('supabase_url').value.trim();
+  const key = document.getElementById('supabase_anon_key').value.trim();
+  if(!url || !key){ toast('Enter both Supabase URL and anon key first.','error'); return; }
+  try{
+    const testClient = supabase.createClient(url,key);
+    const { error } = await testClient.from('leads').select('id').limit(1);
+    if(error){ toast('Connection failed: '+error.message,'error'); }
+    else{ toast('Supabase connection successful.','success'); }
+  }catch(e){ toast('Connection failed: '+e.message,'error'); }
+}
+/* ===================== INTEGRATIONS PANEL (backend automation credentials) ===================== */
+const INTEGRATION_KEYS = [
+  { key:'anthropic', label:'Anthropic (Claude)' },
+  { key:'hubspot', label:'HubSpot' },
+  { key:'readai', label:'Read.ai' }
+];
+function integrationsFunctionsBase(){
+  const url = localStorage.getItem('supabase_url');
+  return url ? `${url.replace(/\/$/,'')}/functions/v1` : null;
+}
+function integrationsAuthHeaders(){
+  const anon = localStorage.getItem('supabase_anon_key') || '';
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer '+anon, 'apikey': anon };
+}
+function getAdminPassword(){
+  const fromField = document.getElementById('integrationsAdminPassword')?.value.trim();
+  return fromField || localStorage.getItem('admin_panel_password') || '';
+}
+function renderIntegrationRows(statusData){
+  const wrap = document.getElementById('integrationRows');
+  if(!wrap) return;
+  const rowsHtml = INTEGRATION_KEYS.map(({key,label})=>{
+    const s = (statusData && statusData[key]) || {status:'not_connected'};
+    const badge = s.status==='connected' ? '<span class="badge badge-connected">Connected</span>'
+      : s.status==='invalid' ? '<span class="badge badge-notconnected">Invalid Key</span>'
+      : '<span class="badge badge-notconnected">Not Connected</span>';
+    return `
+      <div class="form-row">
+        <label>${label} ${badge}</label>
+        <div style="display:flex;gap:8px;">
+          <input type="password" id="integ_${key}" placeholder="Paste ${label} API key...">
+          <button class="btn btn-sm" onclick="saveIntegrationKey('${key}')">Save</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const gmail = (statusData && statusData.gmail) || {status:'not_connected'};
+  const gmailBadge = gmail.status==='connected'
+    ? `<span class="badge badge-connected">Connected — ${escapeHtml(gmail.email||'')}</span>`
+    : '<span class="badge badge-notconnected">Not Connected</span>';
+  const gmailHtml = `
+    <div class="form-row">
+      <label>Gmail (OAuth) ${gmailBadge}</label>
+      <div style="display:flex;gap:8px;">
+        ${gmail.status==='connected'
+          ? `<button class="btn btn-sm btn-delete-x" onclick="disconnectIntegration('gmail')">Disconnect</button>`
+          : `<button class="btn btn-sm btn-pink" onclick="connectGmailOAuth()">Connect Gmail</button>`}
+      </div>
+    </div>`;
+
+  wrap.innerHTML = rowsHtml + gmailHtml;
+}
+async function loadIntegrationsStatus(){
+  const passwordField = document.getElementById('integrationsAdminPassword');
+  if(passwordField && !passwordField.value) passwordField.value = localStorage.getItem('admin_panel_password') || '';
+  const base = integrationsFunctionsBase();
+  const statusEl = document.getElementById('integrationsStatus');
+  if(!base){
+    renderIntegrationRows(null);
+    if(statusEl) statusEl.textContent = 'Connect Supabase in the Database section above first — these are read from your Supabase project.';
+    return;
+  }
+  try{
+    const res = await fetch(`${base}/get-credentials-status`, { headers: integrationsAuthHeaders() });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    renderIntegrationRows(data.credentials);
+    if(statusEl) statusEl.textContent = '';
+  }catch(e){
+    renderIntegrationRows(null);
+    if(statusEl) statusEl.textContent = 'Could not load integration status — is get-credentials-status deployed? ('+e.message+')';
+  }
+}
+async function saveIntegrationKey(key){
+  const base = integrationsFunctionsBase();
+  if(!base){ toast('Connect Supabase in the Database section above first.','error'); return; }
+  const password = getAdminPassword();
+  if(!password){ toast('Enter the admin password first.','error'); return; }
+  const input = document.getElementById('integ_'+key);
+  const value = input ? input.value.trim() : '';
+  if(!value){ toast('Paste a key first.','error'); return; }
+  toast('Saving and testing key...');
+  try{
+    const res = await fetch(`${base}/save-credential`, {
+      method:'POST',
+      headers: integrationsAuthHeaders(),
+      body: JSON.stringify({ key_name:key, key_value:value, admin_password:password })
+    });
+    const data = await res.json();
+    if(res.status===401){ toast('Invalid admin password.','error'); return; }
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    localStorage.setItem('admin_panel_password', password);
+    toast(data.status==='connected' ? `${key} connected.` : `Key saved but the test call failed — double-check it's valid.`, data.status==='connected'?'success':'error');
+    await loadIntegrationsStatus();
+  }catch(e){
+    toast('Could not save key: '+e.message,'error');
+  }
+}
+async function disconnectIntegration(key){
+  const base = integrationsFunctionsBase();
+  if(!base) return;
+  const password = getAdminPassword();
+  if(!password){ toast('Enter the admin password first.','error'); return; }
+  try{
+    const res = await fetch(`${base}/disconnect-credential`, {
+      method:'POST',
+      headers: integrationsAuthHeaders(),
+      body: JSON.stringify({ key_name:key, admin_password:password })
+    });
+    const data = await res.json();
+    if(res.status===401){ toast('Invalid admin password.','error'); return; }
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    localStorage.setItem('admin_panel_password', password);
+    toast(`${key} disconnected.`,'success');
+    await loadIntegrationsStatus();
+  }catch(e){
+    toast('Could not disconnect: '+e.message,'error');
+  }
+}
+async function connectGmailOAuth(){
+  const base = integrationsFunctionsBase();
+  if(!base){ toast('Connect Supabase in the Database section above first.','error'); return; }
+  const password = getAdminPassword();
+  if(!password){ toast('Enter the admin password first.','error'); return; }
+  try{
+    const res = await fetch(`${base}/gmail-oauth-start`, {
+      method:'POST',
+      headers: integrationsAuthHeaders(),
+      body: JSON.stringify({ admin_password:password })
+    });
+    const data = await res.json();
+    if(res.status===401){ toast('Invalid admin password.','error'); return; }
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    localStorage.setItem('admin_panel_password', password);
+    window.location.href = data.url;
+  }catch(e){
+    toast('Could not start the Gmail connection: '+e.message,'error');
+  }
+}
+function handleGmailOAuthRedirect(){
+  const params = new URLSearchParams(location.search);
+  const gmailStatus = params.get('gmail');
+  if(!gmailStatus) return;
+  switchTab('settings');
+  if(gmailStatus==='connected') toast('Gmail connected.','success');
+  else toast('Gmail connection failed: '+(params.get('gmail_msg')||'unknown error'),'error');
+  history.replaceState({}, '', location.pathname);
+}
+
+async function loadQualificationConfig(){
+  const status = document.getElementById('qualificationConfigStatus');
+  if(!status) return;
+  if(!supabaseClient){
+    status.textContent = 'Connect Supabase above to enable qualification thresholds — the async funnel reads this from Supabase, not from this browser.';
+    return;
+  }
+  const { data, error } = await supabaseClient.from('qualification_config').select('*').eq('id',1).maybeSingle();
+  if(error || !data){ status.textContent = 'Could not load thresholds from Supabase.'; return; }
+  document.getElementById('qc_min_budget_floor').value = data.min_budget_floor || '';
+  document.getElementById('qc_ideal_budget_threshold').value = data.ideal_budget_threshold || '';
+  status.textContent = data.updated_at ? `Last updated ${new Date(data.updated_at).toLocaleString()}.` : '';
+}
+async function saveQualificationConfig(){
+  const status = document.getElementById('qualificationConfigStatus');
+  if(!supabaseClient){ toast('Connect Supabase in the Database section above first.','error'); return; }
+  const min_budget_floor = Number(document.getElementById('qc_min_budget_floor').value) || 0;
+  const ideal_budget_threshold = Number(document.getElementById('qc_ideal_budget_threshold').value) || 0;
+  const { error } = await supabaseClient.from('qualification_config').upsert({ id:1, min_budget_floor, ideal_budget_threshold, updated_at: new Date().toISOString() });
+  if(error){ toast('Could not save thresholds: '+error.message,'error'); return; }
+  toast('Qualification thresholds saved.','success');
+  await loadQualificationConfig();
+}
+async function migrateToSupabase(){
+  const url = localStorage.getItem('supabase_url');
+  const key = localStorage.getItem('supabase_anon_key');
+  if(!url || !key){ toast('Add Supabase URL and anon key first.','error'); return; }
+  const client = supabase.createClient(url,key);
+  const progress = document.getElementById('migrateProgress');
+  progress.classList.remove('hidden');
+  const tables = [
+    ['leads','sp_leads'],['comm_log','sp_comm_log'],['proposals','sp_proposals'],
+    ['followups','sp_followups'],['call_notes','sp_call_notes']
+  ];
+  let done=0;
+  for(const [table,storageKey] of tables){
+    const rows = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    progress.textContent = `Migrating ${table}... (${rows.length} records)`;
+    for(const row of rows){
+      const clean = {...row};
+      try{ await client.from(table).insert([clean]); }catch(e){}
+    }
+    done++;
+    progress.textContent = `Migrated ${done}/${tables.length} tables...`;
+  }
+  localStorage.setItem('supabase_enabled','true');
+  document.getElementById('supabase_enabled').checked = true;
+  initSupabase();
+  progress.textContent = 'All data has been migrated to Supabase. Reads and writes now go to Supabase.';
+  toast('Migration complete.','success');
+}
+
+/* ===================== CLAUDE ENGINE ===================== */
+async function getVoiceProfileBlock(){
+  const profile = await getVoiceProfileData();
+  const hasProfile = profile && (profile.tone_summary || (profile.raw_samples && profile.raw_samples.length));
+  if(!hasProfile){
+    return 'No voice profile has been created yet in Settings. Flag this at the top of the draft instead of guessing at Mary\'s tone (e.g. "No voice profile on file yet — using a neutral professional tone.").';
+  }
+  return `Tone: ${profile.tone_summary || 'n/a'}
+Energy: ${profile.energy_level || 'n/a'}
+Formality: ${profile.formality_level || 'n/a'}
+Common openers: ${(profile.common_openers||[]).join('; ') || 'n/a'}
+Common closers: ${(profile.common_closers||[]).join('; ') || 'n/a'}
+Signature phrases: ${(profile.signature_phrases||[]).join('; ') || 'n/a'}
+Never does: ${(profile.never_does||[]).join('; ') || 'n/a'}`;
+}
+async function buildSystemPrompt(roleInstructions){
+  const voiceBlock = await getVoiceProfileBlock();
+  return `You are an AI assistant embedded in the Sales Engine used by Mary Robb, founder of Social Practice — a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
+
+Write this in Mary's voice using the profile below — match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
+${voiceBlock}
+
+${roleInstructions || ''}
+
+Rules:
+- Never write generic, placeholder, or templated content. Always be specific to the exact context and details given.
+- Never use bracket placeholders like [Name] or [Business] — use the real details provided.
+- Write like a real person, not a robot.`;
+}
+
+async function callClaude(systemPrompt, userContent, opts={}){
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){
+    return { ok:false, needsKey:true, message: "Add your Anthropic API key in Settings to enable AI features. You can still use the system manually." };
+  }
+  const messages = [{ role:'user', content: userContent }];
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: opts.maxTokens || 2200,
+        system: systemPrompt,
+        messages
+      })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error){
+      return { ok:false, message: (data.error && data.error.message) || 'Claude request failed.' };
+    }
+    const text = (data.content || []).map(c=>c.text || '').join('\n').trim();
+    return { ok:true, text };
+  }catch(e){
+    return { ok:false, message: 'Could not reach Claude directly from the browser (' + e.message + '). In production this call would route through a backend proxy.' };
+  }
+}
+
+function stripJsonFence(text){
+  return text.replace(/```json/gi,'').replace(/```/g,'').trim();
+}
+
+/* ===================== FILE UPLOAD / EXTRACTION ===================== */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+function readFileAsText(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result);
+    r.onerror = reject;
+    r.readAsText(file);
+  });
+}
+function readFileAsArrayBuffer(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result);
+    r.onerror = reject;
+    r.readAsArrayBuffer(file);
+  });
+}
+function readFileAsBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+async function extractPdfText(file){
+  const buf = await readFileAsArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let text = '';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return text.trim();
+}
+async function extractDocxText(file){
+  const buf = await readFileAsArrayBuffer(file);
+  const bytes = new Uint8Array(buf);
+  const dv = new DataView(buf);
+  let eocd = -1;
+  for(let i=bytes.length-22;i>=0;i--){
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  }
+  if(eocd===-1) throw new Error('Not a valid .docx file');
+  const cdOffset = dv.getUint32(eocd+16,true);
+  const cdEntries = dv.getUint16(eocd+10,true);
+  let offset = cdOffset, target=null;
+  for(let i=0;i<cdEntries;i++){
+    if(dv.getUint32(offset,true)!==0x02014b50) break;
+    const compMethod = dv.getUint16(offset+10,true);
+    const compSize = dv.getUint32(offset+20,true);
+    const nameLen = dv.getUint16(offset+28,true);
+    const extraLen = dv.getUint16(offset+30,true);
+    const commentLen = dv.getUint16(offset+32,true);
+    const localHeaderOffset = dv.getUint32(offset+42,true);
+    const name = new TextDecoder().decode(bytes.slice(offset+46, offset+46+nameLen));
+    if(name==='word/document.xml'){ target = {compMethod,compSize,localHeaderOffset}; }
+    offset += 46+nameLen+extraLen+commentLen;
+  }
+  if(!target) throw new Error('document.xml not found in docx');
+  const lh = target.localHeaderOffset;
+  const lhNameLen = dv.getUint16(lh+26,true);
+  const lhExtraLen = dv.getUint16(lh+28,true);
+  const dataStart = lh+30+lhNameLen+lhExtraLen;
+  const compData = bytes.slice(dataStart, dataStart+target.compSize);
+  let xmlBytes;
+  if(target.compMethod===0){ xmlBytes = compData; }
+  else{
+    const stream = new Blob([compData]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  const xml = new TextDecoder().decode(xmlBytes);
+  return xml.replace(/<w:p[ >]/g,'\n$&').replace(/<[^>]+>/g,'').replace(/\n{2,}/g,'\n').trim();
+}
+async function handleFileUpload(inputId, textareaId, storeKey){
+  const input = document.getElementById(inputId);
+  const file = input.files[0];
+  if(!file) return;
+  const tag = document.getElementById(
+    inputId==='inboxFileInput' ? 'inboxAttachTag' :
+    inputId==='proposalFileInput' ? 'proposalAttachTag' : null
+  );
+  try{
+    if(file.type.startsWith('image/')){
+      const b64 = await readFileAsBase64(file);
+      genericAttachments[storeKey] = { type:'image', media_type:file.type, data:b64 };
+      if(tag){ tag.textContent = '🖼 '+file.name+' attached as image context'; tag.classList.remove('hidden'); }
+      toast('Image attached — it will be used as context for the next Claude call.','success');
+      return;
+    }
+    let text = '';
+    if(file.name.toLowerCase().endsWith('.pdf')){ text = await extractPdfText(file); }
+    else if(file.name.toLowerCase().endsWith('.docx')){ text = await extractDocxText(file); }
+    else{ text = await readFileAsText(file); }
+    const ta = document.getElementById(textareaId);
+    ta.value = (ta.value ? ta.value+'\n\n' : '') + text;
+    delete genericAttachments[storeKey];
+    if(tag){ tag.textContent = '📄 '+file.name+' — text extracted and added below'; tag.classList.remove('hidden'); }
+    toast('File content added.','success');
+  }catch(e){
+    toast('Could not read file: '+e.message,'error');
+  }
+  input.value = '';
+}
+function buildUserContent(promptText, storeKey){
+  const att = genericAttachments[storeKey];
+  if(att && att.type==='image'){
+    return [
+      { type:'image', source:{ type:'base64', media_type: att.media_type, data: att.data } },
+      { type:'text', text: promptText }
+    ];
+  }
+  return promptText;
+}
+
+/* ===================== MODAL SYSTEM ===================== */
+function openModal(title, bodyHtml, footerHtml){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target.id==='modalOverlay') closeModal()">
+      <div class="modal">
+        <div class="modal-header"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
+        <div class="modal-body" id="modalBody">${bodyHtml}</div>
+        <div class="modal-footer" id="modalFooter">${footerHtml||''}</div>
+      </div>
+    </div>`;
+}
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function updateModalFooter(html){ const f=document.getElementById('modalFooter'); if(f) f.innerHTML=html; }
+function updateModalBody(html){ const b=document.getElementById('modalBody'); if(b) b.innerHTML=html; }
+function copyTextareaContent(id){
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value || el.textContent).then(()=>toast('Copied to clipboard.','success'));
+}
+function copyElementText(id){
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.innerText).then(()=>toast('Copied to clipboard.','success'));
+}
+
+/* ===================== AI DRAFT MODAL (generic) ===================== */
+async function openAIDraftModal(title, systemPrompt, userPrompt, afterSaveCb){
+  window.__lastAiDraftText = null;
+  openModal(title, `<div class="ai-loading">Drafting with Claude...</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){
+    updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>
+      <textarea id="aiDraftText" rows="12" placeholder="Write the message manually..."></textarea>`);
+    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn" onclick="closeModal()">Close</button>`);
+    return;
+  }
+  const result = await callClaude(systemPrompt, userPrompt);
+  if(!result.ok){
+    updateModalBody(`<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`);
+    return;
+  }
+  window.__lastAiDraftText = result.text;
+  updateModalBody(`<textarea id="aiDraftText" rows="14">${escapeHtml(result.text)}</textarea>`);
+  let footer = `<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button>`;
+  if(afterSaveCb) footer += `<button class="btn btn-pink" onclick="(${afterSaveCbWrapperName})()">Mark as Sent</button>`;
+  footer += `<button class="btn" onclick="closeModal()">Close</button>`;
+  updateModalFooter(footer);
+  if(afterSaveCb){
+    window.__aiDraftAfterSave = afterSaveCb;
+  }
+}
+const afterSaveCbWrapperName = '__runAiDraftAfterSave';
+function __runAiDraftAfterSave(){
+  const text = document.getElementById('aiDraftText').value;
+  if(window.__aiDraftAfterSave) window.__aiDraftAfterSave(text);
+  closeModal();
+}
+
+/* ===================== THEME + DATE ===================== */
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : 'dark';
+  if(next==='dark'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('themeToggle').textContent='☀️'; }
+  else{ document.documentElement.removeAttribute('data-theme'); document.getElementById('themeToggle').textContent='🌙'; }
+  localStorage.setItem('theme', next);
+}
+function initTheme(){
+  const saved = localStorage.getItem('theme');
+  if(saved==='dark'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('themeToggle').textContent='☀️'; }
+}
+function updateLiveDate(){
+  document.getElementById('liveDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+
+/* ===================== NAV ===================== */
+document.getElementById('navTabs').addEventListener('click', (e)=>{
+  const tab = e.target.closest('.nav-tab');
+  if(!tab) return;
+  switchTab(tab.dataset.tab);
+});
+function switchTab(name){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='callnotes') initCallNotesTab();
+  if(name==='inbox') renderRescheduleFlags();
+  if(name==='settings'){ loadQualificationConfig(); loadIntegrationsStatus(); }
+}
+
+/* ===================== SEED DATA ===================== */
+async function seedIfEmpty(){
+  const existing = LeadsDB.localAll();
+  if(existing.length>0) return;
+  const t = todayISO();
+  const seedLeads = [
+    { business_name:"Luxe Aesthetics Dallas", contact_name:"Jennifer Kim", email:"jennifer@luxeaestheticsdallas.com", phone:"(214) 555-0142", source:"HubSpot", stage:"Discovery Booked", practice_type:"Med Spa", location:"Dallas, TX", proposal_value:2800, last_contact:addDays(t,-2), next_followup:addDays(t,1), discovery_call_date:addDays(t,2), notes:"Interested in growing IG following and booking more Botox/filler consults. Currently posting inconsistently, no paid ad strategy." },
+    { business_name:"Glow Plastic Surgery", contact_name:"Dr. Amanda Torres", email:"atorres@glowplasticsurgery.com", phone:"(305) 555-0198", source:"Referral", stage:"Proposal Sent", practice_type:"Plastic Surgery", location:"Miami, FL", proposal_value:3500, last_contact:addDays(t,-5), next_followup:addDays(t,2), notes:"Referred by an existing client. Wants full-service content strategy plus paid ads. Proposal sent, awaiting response." },
+    { business_name:"Smile Aesthetic Dental", contact_name:"Dr. Carlos Reyes", email:"carlos@smileaestheticdental.com", phone:"(602) 555-0176", source:"Website", stage:"Nurturing", practice_type:"Dental", location:"Phoenix, AZ", proposal_value:1800, last_contact:addDays(t,-9), next_followup:addDays(t,3), notes:"Cosmetic dentistry focus, wants to build local brand awareness. Early-stage, still warming up." },
+    { business_name:"Pure Beauty Med Spa", contact_name:"Sarah Walsh", email:"sarah@purebeautymedspa.com", phone:"(619) 555-0134", source:"HubSpot", stage:"Agreement Sent", practice_type:"Med Spa", location:"San Diego, CA", proposal_value:2400, last_contact:addDays(t,-3), next_followup:addDays(t,1), notes:"Ready to sign, reviewing agreement terms with her business partner." },
+    { business_name:"Elite Aesthetics Nashville", contact_name:"Michelle Park", email:"michelle@eliteaestheticsnashville.com", phone:"(615) 555-0187", source:"HubSpot", stage:"New Lead", practice_type:"Med Spa", location:"Nashville, TN", proposal_value:2200, last_contact:t, next_followup:addDays(t,2), notes:"Inbound inquiry synced from HubSpot. Hasn't been contacted yet beyond an initial reply." }
+  ];
+  const inserted = [];
+  for(const l of seedLeads){ inserted.push(await LeadsDB.insert(l)); }
+
+  const findLead = (name)=> inserted.find(l=>l.business_name===name);
+  const glow = findLead("Glow Plastic Surgery");
+  const pure = findLead("Pure Beauty Med Spa");
+  const smile = findLead("Smile Aesthetic Dental");
+
+  const seedFollowups = [
+    { lead_id: glow.id, business_name: glow.business_name, contact_name: glow.contact_name, type:"Proposal", sent_date:addDays(t,-5), count:2, next_date:addDays(t,-1), status:"Waiting" },
+    { lead_id: pure.id, business_name: pure.business_name, contact_name: pure.contact_name, type:"Agreement", sent_date:addDays(t,-3), count:1, next_date:t, status:"Waiting" },
+    { lead_id: smile.id, business_name: smile.business_name, contact_name: smile.contact_name, type:"Proposal", sent_date:addDays(t,-12), count:3, next_date:addDays(t,1), status:"Waiting" }
+  ];
+  for(const f of seedFollowups){ await FollowupsDB.insert(f); }
+}
+
+/* ===================== PIPELINE: STAT CARDS ===================== */
+async function renderStatCards(){
+  const leads = await LeadsDB.getAll();
+  const t = todayISO();
+  const weekStart = addDays(t, -((new Date(t+'T00:00:00').getDay()+6)%7));
+  const active = leads.filter(l=>!['Signed','Lost'].includes(l.stage)).length;
+  const discoveryThisWeek = leads.filter(l=> l.discovery_call_date && l.discovery_call_date >= weekStart).length;
+  const proposalsSent = leads.filter(l=>['Proposal Sent','Agreement Sent','Signed'].includes(l.stage)).length;
+  const signedThisWeek = leads.filter(l=> l.stage==='Signed' && l.signed_date && l.signed_date >= weekStart).length;
+  const pipelineRevenue = leads.filter(l=>!['Lost'].includes(l.stage)).reduce((s,l)=>s+(Number(l.proposal_value)||0),0);
+
+  const cards = [
+    ["Total Active Leads", active, false],
+    ["Discovery Calls Booked This Week", discoveryThisWeek, false],
+    ["Proposals Sent", proposalsSent, false],
+    ["Contracts Signed This Week", signedThisWeek, false],
+    ["Revenue in Pipeline", fmtMoney(pipelineRevenue), true]
+  ];
+  document.getElementById('statGrid').innerHTML = cards.map(([label,val,pink])=>`
+    <div class="stat-card"><div class="stat-label">${label}</div><div class="stat-value${pink?' pink':''}">${val}</div></div>
+  `).join('');
+}
+
+/* ===================== PIPELINE: TABLE ===================== */
+function populateFilterOptions(){
+  const stageSel = document.getElementById('filterStage');
+  const sourceSel = document.getElementById('filterSource');
+  const practiceSel = document.getElementById('filterPractice');
+  STAGES.forEach(s=>stageSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+  SOURCES.forEach(s=>sourceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+  PRACTICE_TYPES.forEach(s=>practiceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+}
+let allLeadsCache = [];
+async function renderLeadsTable(){
+  allLeadsCache = await LeadsDB.getAll();
+  populateCallLeadOptions();
+  const search = document.getElementById('leadSearch').value.toLowerCase();
+  const fStage = document.getElementById('filterStage').value;
+  const fSource = document.getElementById('filterSource').value;
+  const fPractice = document.getElementById('filterPractice').value;
+
+  let leads = allLeadsCache.filter(l=>{
+    if(search && !(`${l.business_name} ${l.contact_name}`.toLowerCase().includes(search))) return false;
+    if(fStage && l.stage!==fStage) return false;
+    if(fSource && l.source!==fSource) return false;
+    if(fPractice && l.practice_type!==fPractice) return false;
+    return true;
+  });
+
+  const t = todayISO();
+  const activeLeads = leads.filter(l=> !( !['Signed','Lost'].includes(l.stage) === false ) );
+  const warmLeads = leads.filter(l=> ['Signed','Lost'].includes(l.stage) || daysBetween(l.last_contact||t, t) < 14 );
+  const coldLeads = allLeadsCache.filter(l=> !['Signed','Lost'].includes(l.stage) && daysBetween(l.last_contact||t, t) >= 14 );
+
+  document.getElementById('leadsTableBody').innerHTML = warmLeads.length ? warmLeads.map(l=>leadRowHtml(l)).join('') :
+    `<tr><td colspan="12" class="chat-empty">No leads match your filters.</td></tr>`;
+  updateBulkDeleteBar();
+
+  const coldBody = document.getElementById('coldLeadsBody');
+  const coldEmpty = document.getElementById('coldLeadsEmpty');
+  if(coldLeads.length){
+    coldEmpty.classList.add('hidden');
+    coldBody.innerHTML = coldLeads.map(l=>`
+      <tr class="cold-row">
+        <td class="biz-name">${escapeHtml(l.business_name)}</td>
+        <td>${escapeHtml(l.contact_name)}</td>
+        <td><span class="badge stage-${l.stage.replace(/ /g,'\\ ')}" style="border-radius:20px;">${l.stage}</span></td>
+        <td>${fmtDate(l.last_contact)}</td>
+        <td>${daysBetween(l.last_contact||t,t)} days</td>
+        <td><button class="btn btn-sm btn-pink" onclick="actionReactivate('${l.id}')">Reactivate</button></td>
+      </tr>`).join('');
+  } else {
+    coldBody.innerHTML = '';
+    coldEmpty.classList.remove('hidden');
+  }
+}
+function qualificationBadgeHtml(l){
+  if(l.qualified === true){
+    const score = l.qualification_score!=null ? ' · '+l.qualification_score : '';
+    return `<span class="badge" style="background:#dcf7e6;color:#1a9e5c;" title="${escapeHtml(l.qualification_reason||'')}">Qualified${score}</span>`;
+  }
+  if(l.qualified === false){
+    return `<span class="badge" style="background:#f5dcdc;color:#c0334a;" title="${escapeHtml(l.qualification_reason||'')}">Not Qualified</span>`;
+  }
+  return `<span class="muted" style="font-size:12px;">—</span>`;
+}
+function leadRowHtml(l){
+  return `<tr>
+    <td><input type="checkbox" class="lead-select-cb" data-id="${l.id}" onchange="updateBulkDeleteBar()"></td>
+    <td class="biz-name">${escapeHtml(l.business_name)}</td>
+    <td>${escapeHtml(l.contact_name)}<br><span class="muted" style="font-size:11.5px;">${escapeHtml(l.email||'')}</span></td>
+    <td>${escapeHtml(l.source||'')}</td>
+    <td>
+      <select class="stage-select stage-${l.stage.replace(/ /g,'\\ ')}" onchange="changeLeadStage('${l.id}', this.value)">
+        ${STAGES.map(s=>`<option value="${s}" ${s===l.stage?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </td>
+    <td>${qualificationBadgeHtml(l)}</td>
+    <td>${escapeHtml(l.practice_type||'')}</td>
+    <td>${escapeHtml(l.location||'')}</td>
+    <td>${fmtMoney(l.proposal_value)}/mo</td>
+    <td>${fmtDate(l.last_contact)}</td>
+    <td>${fmtDate(l.next_followup)}</td>
+    <td><div class="actions-cell">
+      <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
+      <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
+      ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
+      <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
+      <button class="btn btn-sm" onclick="sendToProposal('${l.id}')">Proposal</button>
+      <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
+      <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
+      <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
+      <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
+      <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="openDeleteLeadModal('${l.id}')">✕</button>
+    </div></td>
+  </tr>`;
+}
+function findLeadById(id){ return allLeadsCache.find(l=>l.id===id); }
+
+/* ===================== LEAD DELETE (manual + bulk) ===================== */
+async function deleteLeadCascade(id){
+  const allLeads = await LeadsDB.getAll();
+  const lead = allLeads.find(l=>l.id===id);
+  await LeadsDB.remove(id);
+  const followups = await FollowupsDB.getAll();
+  for(const f of followups.filter(f=>f.lead_id===id)){ await FollowupsDB.remove(f.id); }
+  const comms = await CommLogDB.getAll();
+  for(const c of comms.filter(c=>c.lead_id===id)){ await CommLogDB.remove(c.id); }
+  const proposals = await ProposalsDB.getAll();
+  for(const p of proposals.filter(p=>p.lead_id===id)){ await ProposalsDB.remove(p.id); }
+  return lead;
+}
+function openDeleteLeadModal(id){
+  const lead = findLeadById(id);
+  if(!lead) return;
+  openModal('Delete Lead', `
+    <div style="text-align:center;">
+      <div style="font-size:38px;margin-bottom:12px;">⚠️</div>
+      <p style="font-size:15px;font-weight:600;margin-bottom:14px;">Are you sure you want to delete ${escapeHtml(lead.contact_name)} from ${escapeHtml(lead.business_name)}?</p>
+      <p class="muted" style="margin-bottom:8px;">This will permanently delete:</p>
+      <ul style="text-align:left;margin:0 auto;max-width:300px;color:var(--text-muted);font-size:13.5px;">
+        <li>The lead record</li>
+        <li>All communications history</li>
+        <li>All proposals</li>
+        <li>All follow-up entries</li>
+      </ul>
+    </div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmDeleteLead('${id}')">Delete Permanently</button>
+  `);
+}
+async function confirmDeleteLead(id){
+  const lead = await deleteLeadCascade(id);
+  closeModal();
+  toast(`${lead ? lead.contact_name : 'Lead'} has been deleted`,'success');
+  await refreshPipeline();
+  await renderFollowupTable();
+  await renderSavedProposals();
+}
+function getSelectedLeadIds(){
+  return Array.from(document.querySelectorAll('.lead-select-cb:checked')).map(cb=>cb.dataset.id);
+}
+function toggleSelectAllLeads(checked){
+  document.querySelectorAll('.lead-select-cb').forEach(cb=>{ cb.checked = checked; });
+  updateBulkDeleteBar();
+}
+function updateBulkDeleteBar(){
+  const bar = document.getElementById('bulkDeleteBar');
+  if(!bar) return;
+  const ids = getSelectedLeadIds();
+  const totalCbs = document.querySelectorAll('.lead-select-cb').length;
+  if(ids.length>0){
+    bar.classList.remove('hidden');
+    document.getElementById('bulkDeleteCount').textContent = `${ids.length} lead${ids.length>1?'s':''} selected`;
+  } else {
+    bar.classList.add('hidden');
+  }
+  const selectAll = document.getElementById('selectAllLeads');
+  if(selectAll) selectAll.checked = totalCbs>0 && ids.length===totalCbs;
+}
+function openBulkDeleteModal(){
+  const ids = getSelectedLeadIds();
+  if(!ids.length) return;
+  const leads = ids.map(id=>findLeadById(id)).filter(Boolean);
+  openModal('Delete Selected Leads', `
+    <div style="text-align:center;">
+      <div style="font-size:38px;margin-bottom:12px;">⚠️</div>
+      <p style="font-size:15px;font-weight:600;margin-bottom:14px;">Are you sure you want to permanently delete ${leads.length} lead${leads.length>1?'s':''}?</p>
+      <ul style="text-align:left;margin:0 auto 14px;max-width:340px;color:var(--text);font-size:13.5px;">
+        ${leads.map(l=>`<li>${escapeHtml(l.contact_name)} — ${escapeHtml(l.business_name)}</li>`).join('')}
+      </ul>
+      <p class="muted">All associated communications history, proposals, and follow-up entries for these leads will also be deleted.</p>
+    </div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmBulkDeleteLeads()">Delete Permanently</button>
+  `);
+}
+async function confirmBulkDeleteLeads(){
+  const ids = getSelectedLeadIds();
+  let count = 0;
+  for(const id of ids){
+    const lead = await deleteLeadCascade(id);
+    if(lead) count++;
+  }
+  closeModal();
+  toast(`${count} lead${count>1?'s':''} deleted.`,'success');
+  await refreshPipeline();
+  await renderFollowupTable();
+  await renderSavedProposals();
+}
+
+async function changeLeadStage(id, stage){
+  const lead = findLeadById(id);
+  const changes = { stage };
+  const t = todayISO();
+  if(stage==='Signed') changes.signed_date = t;
+  await LeadsDB.update(id, changes);
+  if(stage==='Proposal Sent' || stage==='Agreement Sent'){
+    await ensureFollowupForLead(id, stage==='Agreement Sent' ? 'Agreement' : 'Proposal');
+  }
+  toast('Stage updated.','success');
+  await refreshPipeline();
+  await syncStageToHubspot(lead, stage);
+}
+async function ensureFollowupForLead(leadId, type){
+  const lead = findLeadById(leadId) || (await LeadsDB.getAll()).find(l=>l.id===leadId);
+  const followups = await FollowupsDB.getAll();
+  const existing = followups.find(f=>f.lead_id===leadId && f.status!=='Signed' && f.status!=='Lost');
+  const t = todayISO();
+  if(existing){
+    await FollowupsDB.update(existing.id, { type, sent_date:t, count:0, next_date: addBusinessDays(t,2), status:'Waiting' });
+  } else {
+    await FollowupsDB.insert({ lead_id:leadId, business_name:lead.business_name, contact_name:lead.contact_name, type, sent_date:t, count:0, next_date: addBusinessDays(t,2), status:'Waiting' });
+  }
+}
+async function refreshPipeline(){
+  await renderStatCards();
+  await renderLeadsTable();
+}
+
+/* ===================== PIPELINE: ACTIONS ===================== */
+function leadCtx(l){
+  return `Business: ${l.business_name}\nContact: ${l.contact_name}\nEmail: ${l.email||'n/a'}\nPhone: ${l.phone||'n/a'}\nSource: ${l.source}\nStage: ${l.stage}\nPractice Type: ${l.practice_type}\nLocation: ${l.location}\nProposal Value: ${fmtMoney(l.proposal_value)}/month\nLast Contact: ${fmtDate(l.last_contact)}\nNext Follow-Up: ${fmtDate(l.next_followup)}\nNotes: ${l.notes||'None'}`;
+}
+async function actionNurture(id){
+  const l = findLeadById(id);
+  await openAIDraftModal(`Nurture Email — ${l.business_name}`,
+    await buildSystemPrompt("Task: Draft a warm nurture email to keep this lead engaged without being pushy. This lead has not yet booked a discovery call."),
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a warm nurture email (with subject line) that keeps the relationship alive and gently moves them toward booking a discovery call. Write ONLY the email, no preamble.`);
+  logComm(l.id, 'nurture', 'Nurture email drafted');
+}
+async function actionRecap(id){
+  const l = findLeadById(id);
+  await openAIDraftModal(`Discovery Call Recap — ${l.business_name}`,
+    await buildSystemPrompt("Task: Draft a post-discovery-call recap email."),
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a recap email thanking them for the discovery call, briefly summarizing what was likely discussed based on their notes, and letting them know a tailored proposal is coming next. Write ONLY the email, no preamble.`);
+  logComm(l.id, 'recap', 'Recap email drafted');
+}
+async function actionFollowUp(id){
+  const l = findLeadById(id);
+  await openAIDraftModal(`Follow-Up Email — ${l.business_name}`,
+    await buildSystemPrompt("Task: Draft a follow-up email appropriate to this lead's current stage."),
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a follow-up email checking in given how long it has been since last contact and their current stage. Write ONLY the email, no preamble.`);
+  await LeadsDB.update(id, { last_contact: todayISO() });
+  logComm(l.id, 'followup', 'Follow-up email drafted');
+  await refreshPipeline();
+}
+async function actionReactivate(id){
+  const l = allLeadsCache.find(x=>x.id===id) || (await LeadsDB.getAll()).find(x=>x.id===id);
+  await openAIDraftModal(`Reactivation Message — ${l.business_name}`,
+    await buildSystemPrompt("Task: Draft a re-engagement message for a cold lead who has gone quiet."),
+    `Here is the lead context:\n${leadCtx(l)}\n\nThis lead has gone cold with no contact in a while. Write a low-pressure re-engagement email that references their original interest and gives them a fresh, easy reason to reconnect. Write ONLY the email, no preamble.`);
+  logComm(l.id, 'reactivate', 'Reactivation message drafted');
+}
+async function logComm(leadId, type, subject){
+  await CommLogDB.insert({ lead_id:leadId, type, subject, content: subject, sent_at: new Date().toISOString() });
+  if(HUBSPOT.isReady()){
+    const lead = findLeadById(leadId) || (await LeadsDB.getAll()).find(l=>l.id===leadId);
+    if(lead && lead.hubspot_contact_id){
+      const body = window.__lastAiDraftText || subject;
+      try{
+        if(type === 'recap'){
+          await HUBSPOT.logCall(lead.hubspot_contact_id, body);
+        } else {
+          await HUBSPOT.logEmail(lead.hubspot_contact_id, subject, body);
+        }
+      }catch(e){ console.warn('HubSpot activity log failed:', e); }
+    }
+  }
+}
+
+/* Book Call modal */
+function openBookCallModal(id){
+  const l = findLeadById(id);
+  openModal(`Book Discovery Call — ${l.business_name}`, `
+    <div class="form-row"><label>Call Date</label><input type="date" id="bookCallDate" value="${addDays(todayISO(),3)}"></div>
+    <div class="form-row"><label>Call Time</label><input type="time" id="bookCallTime" value="10:00"></div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="confirmBookCall('${id}')">Schedule &amp; Draft Confirmation</button>
+  `);
+}
+async function confirmBookCall(id){
+  const date = document.getElementById('bookCallDate').value;
+  const time = document.getElementById('bookCallTime').value;
+  const l = findLeadById(id);
+  await LeadsDB.update(id, { stage:'Discovery Booked', discovery_call_date: date, next_followup: date, last_contact: todayISO() });
+  closeModal();
+  await refreshPipeline();
+  await syncStageToHubspot(l, 'Discovery Booked');
+  await openAIDraftModal(`Confirmation Email — ${l.business_name}`,
+    await buildSystemPrompt("Task: Draft a discovery call confirmation email."),
+    `Here is the lead context:\n${leadCtx(l)}\n\nA discovery call has just been scheduled for ${fmtDate(date)} at ${time}. Write a confirmation email that confirms the date/time, sets expectations for the call, and shows genuine enthusiasm to speak with them. Write ONLY the email, no preamble.`);
+  logComm(l.id, 'book_call', `Discovery call booked for ${fmtDate(date)} ${time}`);
+}
+
+/* Book Meeting — the one manual step in the async qualification funnel.
+   Only appears once a lead has been qualified by the questionnaire. */
+function openBookMeetingModal(id){
+  const l = findLeadById(id);
+  openModal(`Book Meeting — ${l.business_name}`, `
+    <p class="muted" style="margin-bottom:14px;">Qualified: ${escapeHtml(l.qualification_reason||'')}</p>
+    <div class="form-row"><label>Meeting Date</label><input type="date" id="bookMeetingDate" value="${addDays(todayISO(),3)}"></div>
+    <div class="form-row"><label>Meeting Time</label><input type="time" id="bookMeetingTime" value="10:00"></div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="confirmBookMeeting('${id}')">Confirm &amp; Send</button>
+  `);
+}
+async function confirmBookMeeting(id){
+  const date = document.getElementById('bookMeetingDate').value;
+  const time = document.getElementById('bookMeetingTime').value;
+  const supabaseUrl = localStorage.getItem('supabase_url');
+  const anonKey = localStorage.getItem('supabase_anon_key');
+  if(!supabaseUrl || !anonKey){ toast('Connect Supabase in Settings to send booking emails.','error'); return; }
+  closeModal();
+  toast('Sending meeting proposal...');
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-booking-email`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ leadId: id, proposedDateTime: `${date}T${time}:00` })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    toast('Meeting proposal sent.','success');
+    await refreshPipeline();
+  }catch(e){
+    toast('Could not send the booking email — is the send-booking-email Edge Function deployed? ('+e.message+')','error');
+  }
+}
+
+/* View history modal */
+async function openHistoryModal(id){
+  const l = findLeadById(id);
+  const comms = (await CommLogDB.getAll()).filter(c=>c.lead_id===id);
+  const proposals = (await ProposalsDB.getAll()).filter(p=>p.lead_id===id);
+  const followups = (await FollowupsDB.getAll()).filter(f=>f.lead_id===id);
+  let html = `<h4 style="margin-bottom:10px;color:var(--navy);">Communications</h4>`;
+  html += comms.length ? comms.map(c=>`<div class="list-item"><div><div class="list-item-title">${escapeHtml(c.subject||c.type)}</div><div class="list-item-sub">${new Date(c.sent_at).toLocaleString()}</div></div></div>`).join('') : `<p class="muted" style="margin-bottom:14px;">No communications logged yet.</p>`;
+  html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Proposals</h4>`;
+  html += proposals.length ? proposals.map(p=>`<div class="list-item"><div><div class="list-item-title">${fmtMoney(p.value)}/mo</div><div class="list-item-sub">${new Date(p.created_at).toLocaleDateString()} · ${p.status}</div></div></div>`).join('') : `<p class="muted" style="margin-bottom:14px;">No proposals yet.</p>`;
+  html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Follow-Ups</h4>`;
+  html += followups.length ? followups.map(f=>`<div class="list-item"><div><div class="list-item-title">${f.type} · ${f.status}</div><div class="list-item-sub">Sent ${fmtDate(f.sent_date)} · ${f.count} follow-up(s) · Next ${fmtDate(f.next_date)}</div></div></div>`).join('') : `<p class="muted">No follow-ups yet.</p>`;
+  openModal(`History — ${l.business_name}`, html, `<button class="btn" onclick="closeModal()">Close</button>`);
+}
+
+/* Add / Edit lead modal */
+function leadFormHtml(l){
+  l = l || {};
+  return `
+    <div class="form-row"><label>Paste raw lead info (optional)</label>
+      <textarea id="leadPaste" rows="4" placeholder="Paste anything — an email signature, a DM, notes — Claude will extract the fields below."></textarea>
+    </div>
+    <button class="btn btn-sm" style="margin-bottom:16px;" onclick="extractLeadFromPaste()">Extract with Claude</button>
+    <div class="form-grid">
+      <div class="form-row"><label>Business Name</label><input type="text" id="lBusinessName" value="${escapeHtml(l.business_name||'')}"></div>
+      <div class="form-row"><label>Contact Name</label><input type="text" id="lContactName" value="${escapeHtml(l.contact_name||'')}"></div>
+      <div class="form-row"><label>Email</label><input type="email" id="lEmail" value="${escapeHtml(l.email||'')}"></div>
+      <div class="form-row"><label>Phone</label><input type="tel" id="lPhone" value="${escapeHtml(l.phone||'')}"></div>
+      <div class="form-row"><label>Source</label><select id="lSource">${SOURCES.map(s=>`<option ${s===l.source?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Stage</label><select id="lStage">${STAGES.map(s=>`<option ${s===l.stage?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Practice Type</label><select id="lPracticeType">${PRACTICE_TYPES.map(s=>`<option ${s===l.practice_type?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Location / State</label><input type="text" id="lLocation" value="${escapeHtml(l.location||'')}"></div>
+      <div class="form-row"><label>Proposal Value ($/mo)</label><input type="number" id="lProposalValue" value="${l.proposal_value||''}"></div>
+      <div class="form-row"><label>Last Contact Date</label><input type="date" id="lLastContact" value="${l.last_contact||todayISO()}"></div>
+      <div class="form-row"><label>Next Follow-Up Date</label><input type="date" id="lNextFollowup" value="${l.next_followup||addDays(todayISO(),2)}"></div>
+    </div>
+    <div class="form-row"><label>Notes</label><textarea id="lNotes" rows="3">${escapeHtml(l.notes||'')}</textarea></div>
+  `;
+}
+function openAddLeadModal(){
+  openModal('Add Lead', leadFormHtml(), `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-pink" onclick="saveNewLead()">Add Lead</button>`);
+}
+function openEditLeadModal(id){
+  const l = findLeadById(id);
+  openModal(`Edit Lead — ${l.business_name}`, leadFormHtml(l), `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-pink" onclick="saveEditLead('${id}')">Save Changes</button>`);
+}
+function collectLeadForm(){
+  return {
+    business_name: document.getElementById('lBusinessName').value.trim(),
+    contact_name: document.getElementById('lContactName').value.trim(),
+    email: document.getElementById('lEmail').value.trim(),
+    phone: document.getElementById('lPhone').value.trim(),
+    source: document.getElementById('lSource').value,
+    stage: document.getElementById('lStage').value,
+    practice_type: document.getElementById('lPracticeType').value,
+    location: document.getElementById('lLocation').value.trim(),
+    proposal_value: Number(document.getElementById('lProposalValue').value)||0,
+    last_contact: document.getElementById('lLastContact').value,
+    next_followup: document.getElementById('lNextFollowup').value,
+    notes: document.getElementById('lNotes').value.trim()
+  };
+}
+async function saveNewLead(){
+  const data = collectLeadForm();
+  if(!data.business_name){ toast('Business name is required.','error'); return; }
+  const inserted = await LeadsDB.insert(data);
+  closeModal();
+  toast('Lead added.','success');
+  await refreshPipeline();
+  await pushLeadToHubspot(inserted);
+}
+async function saveEditLead(id){
+  const before = findLeadById(id);
+  const data = collectLeadForm();
+  await LeadsDB.update(id, data);
+  closeModal();
+  toast('Lead updated.','success');
+  await refreshPipeline();
+  if(before && data.stage !== before.stage){
+    await syncStageToHubspot(before, data.stage);
+  }
+}
+async function extractLeadFromPaste(){
+  const raw = document.getElementById('leadPaste').value.trim();
+  if(!raw){ toast('Paste some lead info first.','error'); return; }
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){ toast('Add your Anthropic API key in Settings to enable AI extraction.','error'); return; }
+  toast('Extracting with Claude...');
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Extract structured lead data from raw pasted text."),
+    `Extract lead information from this raw text and return ONLY valid JSON (no markdown fences, no explanation) with exactly these keys: business_name, contact_name, email, phone, source (one of: ${SOURCES.join(', ')}), practice_type (one of: ${PRACTICE_TYPES.join(', ')}), location, proposal_value (number, 0 if unknown), notes (a short summary of anything relevant). If a field is unknown, use an empty string.\n\nRaw text:\n${raw}`
+  );
+  if(!result.ok){ toast(result.message,'error'); return; }
+  try{
+    const parsed = JSON.parse(stripJsonFence(result.text));
+    document.getElementById('lBusinessName').value = parsed.business_name||'';
+    document.getElementById('lContactName').value = parsed.contact_name||'';
+    document.getElementById('lEmail').value = parsed.email||'';
+    document.getElementById('lPhone').value = parsed.phone||'';
+    if(parsed.source && SOURCES.includes(parsed.source)) document.getElementById('lSource').value = parsed.source;
+    if(parsed.practice_type && PRACTICE_TYPES.includes(parsed.practice_type)) document.getElementById('lPracticeType').value = parsed.practice_type;
+    document.getElementById('lLocation').value = parsed.location||'';
+    document.getElementById('lProposalValue').value = parsed.proposal_value||'';
+    document.getElementById('lNotes').value = parsed.notes||'';
+    toast('Fields extracted — review and save.','success');
+  }catch(e){
+    toast("Could not parse Claude's response as structured data. Try again or fill manually.",'error');
+  }
+}
+
+/* Send to proposal */
+function sendToProposal(id){
+  const l = findLeadById(id);
+  currentProposalLeadId = id;
+  switchTab('proposal');
+  document.getElementById('pBusinessName').value = l.business_name;
+  document.getElementById('pContactName').value = l.contact_name;
+  document.getElementById('pPracticeType').value = l.practice_type;
+  document.getElementById('pLocation').value = l.location;
+  document.getElementById('pInvestment').value = l.proposal_value;
+  document.getElementById('proposalNotes').value = l.notes || '';
+  toast(`Proposal Builder pre-filled for ${l.business_name}.`);
+}
+
+/* ===================== HUBSPOT SYNC (connection slots) ===================== */
+function refreshConnectionSlots(){
+  document.getElementById('btnSyncHubspot').style.display = localStorage.getItem('hubspot_key') ? 'inline-flex':'none';
+  document.getElementById('btnConnectGmail').style.display = localStorage.getItem('gmail_key') ? 'inline-flex':'none';
+  document.getElementById('btnLoadReadai').style.display = localStorage.getItem('readai_key') ? 'inline-flex':'none';
+  document.getElementById('btnLoadOtter').style.display = localStorage.getItem('otter_key') ? 'inline-flex':'none';
+  renderFollowupTable();
+}
+async function syncHubspot(){
+  if(!HUBSPOT.isReady()){ toast('Add your HubSpot API key in Settings first.','error'); return; }
+  toast('Syncing with HubSpot...');
+  try{
+    const [contacts, deals] = await Promise.all([HUBSPOT.getContacts(), HUBSPOT.getDeals()]);
+    const leads = await LeadsDB.getAll();
+    let added = 0, updated = 0;
+    for(const c of contacts){
+      const props = c.properties || {};
+      const email = (props.email||'').toLowerCase();
+      const matchedDeal = deals.find(d => props.company && (d.properties.dealname||'').toLowerCase().startsWith(props.company.toLowerCase()));
+      const stageFromDeal = matchedDeal ? reverseMapPipelineStage(matchedDeal.properties.dealstage) : null;
+      let lead = leads.find(l => (l.hubspot_contact_id && l.hubspot_contact_id===c.id) || (email && (l.email||'').toLowerCase()===email));
+      if(lead){
+        const changes = {};
+        if(!lead.hubspot_contact_id) changes.hubspot_contact_id = c.id;
+        if(matchedDeal && !lead.hubspot_deal_id) changes.hubspot_deal_id = matchedDeal.id;
+        if(stageFromDeal && stageFromDeal !== lead.stage) changes.stage = stageFromDeal;
+        if(Object.keys(changes).length){
+          await LeadsDB.update(lead.id, changes);
+          updated++;
+        }
+      } else {
+        const contactName = `${props.firstname||''} ${props.lastname||''}`.trim();
+        await LeadsDB.insert({
+          business_name: props.company || contactName || 'HubSpot Contact',
+          contact_name: contactName,
+          email: props.email || '',
+          phone: props.phone || '',
+          source: 'HubSpot',
+          stage: stageFromDeal || 'New Lead',
+          practice_type: 'Other',
+          location: '',
+          proposal_value: matchedDeal ? Number(matchedDeal.properties.amount)||0 : 0,
+          last_contact: todayISO(),
+          next_followup: addDays(todayISO(),2),
+          notes: 'Synced from HubSpot.',
+          hubspot_contact_id: c.id,
+          hubspot_deal_id: matchedDeal ? matchedDeal.id : null
+        });
+        added++;
+      }
+    }
+    localStorage.setItem('hubspot_contact_count', String(contacts.length));
+    localStorage.setItem('hubspot_deal_count', String(deals.length));
+    localStorage.setItem('hubspot_last_synced', new Date().toISOString());
+    updateHubspotStatusUI();
+    await refreshPipeline();
+    toast(`HubSpot sync complete — ${added} new lead${added===1?'':'s'} added, ${updated} updated.`,'success');
+  }catch(e){
+    toast('Could not sync HubSpot directly from the browser (likely CORS or an invalid key). In production this runs through a backend proxy.','error');
+  }
+}
+
+/* ===================== INBOX MANAGER ===================== */
+function connectGmail(){
+  toast('Gmail connection requires an OAuth flow through a backend service — this button is wired for that integration once a server proxy is in place.','error');
+}
+async function processInboxEmail(){
+  const raw = document.getElementById('inboxPasteArea').value.trim();
+  if(!raw){ toast('Paste an email first.','error'); return; }
+  const resultEl = document.getElementById('inboxResult');
+  resultEl.innerHTML = `<div class="ai-loading">Processing email with Claude...</div>`;
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){
+    resultEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`;
+    return;
+  }
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Process an inbound email for Mary's inbox."),
+    buildUserContent(`Here is an email Mary received:\n\n${raw}\n\nReturn ONLY valid JSON (no markdown fences) with these keys:\n- sender_summary (who sent it and what they want, 1-2 sentences)\n- category (one of: Lead Inquiry, Client Request, Partner Outreach, Admin, Spam)\n- suggested_action (short sentence)\n- clarifying_questions (array of strings, empty array if none needed)\n- draft_reply (a complete, ready-to-send reply written in Mary's voice, with no bracket placeholders)`, 'inbox')
+  );
+  if(!result.ok){ resultEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
+  let parsed;
+  try{ parsed = JSON.parse(stripJsonFence(result.text)); }
+  catch(e){ resultEl.innerHTML = `<div class="card"><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(result.text)}</pre></div>`; return; }
+  lastInboxProcessed = parsed;
+  resultEl.innerHTML = renderInboxResult(parsed);
+  await CommLogDB.insert({ lead_id:null, type:'inbox_email', subject:parsed.category, content: JSON.stringify({ original:raw, ...parsed }), sent_at: new Date().toISOString() });
+  await renderInboxHistory();
+}
+function renderInboxResult(parsed){
+  return `
+  <div class="card" style="background:var(--bg-secondary);">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <span class="badge" style="background:var(--pink-light);color:var(--pink);">${escapeHtml(parsed.category||'Uncategorized')}</span>
+    </div>
+    <p style="margin-bottom:10px;"><strong>Summary:</strong> ${escapeHtml(parsed.sender_summary||'')}</p>
+    <p style="margin-bottom:10px;"><strong>Suggested action:</strong> ${escapeHtml(parsed.suggested_action||'')}</p>
+    ${(parsed.clarifying_questions && parsed.clarifying_questions.length) ? `<p style="margin-bottom:10px;"><strong>Clarifying questions:</strong></p><ul style="margin:0 0 10px 20px;">${parsed.clarifying_questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ul>` : ''}
+    <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Drafted Reply</label>
+    <textarea id="inboxDraftReply" rows="9" style="margin-top:6px;">${escapeHtml(parsed.draft_reply||'')}</textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-pink btn-sm" onclick="copyTextareaContent('inboxDraftReply')">Copy</button>
+      <button class="btn btn-sm" onclick="document.getElementById('inboxDraftReply').removeAttribute('readonly')">Edit</button>
+    </div>
+  </div>`;
+}
+async function renderInboxHistory(){
+  const log = (await CommLogDB.getAll()).filter(c=>c.type==='inbox_email');
+  const wrap = document.getElementById('inboxHistory');
+  const empty = document.getElementById('inboxHistoryEmpty');
+  if(!log.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  wrap.innerHTML = log.map(c=>{
+    let parsed={}; try{ parsed = JSON.parse(c.content); }catch(e){}
+    return `<div class="list-item"><div><div class="list-item-title">${escapeHtml(c.subject||'Email')}</div><div class="list-item-sub">${escapeHtml((parsed.sender_summary||'').slice(0,90))} · ${new Date(c.sent_at).toLocaleString()}</div></div></div>`;
+  }).join('');
+}
+
+/* Reschedule requests — surfaced here by the check-booking-replies Edge Function.
+   A plain "yes that works" auto-locks the meeting in; only genuine alternate-time
+   requests land here for a human to lock in manually. */
+async function renderRescheduleFlags(){
+  const wrap = document.getElementById('rescheduleList');
+  const empty = document.getElementById('rescheduleEmpty');
+  if(!wrap) return;
+  if(!supabaseClient){
+    wrap.innerHTML = '';
+    empty.textContent = 'Connect Supabase in Settings to see reschedule requests detected by the booking-reply automation.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from('reschedule_flags')
+    .select('*, leads(business_name, contact_name)')
+    .eq('status','new')
+    .order('detected_at',{ascending:false});
+  if(error || !data || !data.length){
+    wrap.innerHTML = '';
+    empty.textContent = 'No reschedule requests right now.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.innerHTML = data.map(f=>`
+    <div class="list-item">
+      <div><div class="list-item-title">${escapeHtml(f.leads?.business_name || 'Unknown lead')}</div><div class="list-item-sub">${escapeHtml(f.detected_message||f.raw_email_snippet||'')}</div></div>
+      <button class="btn btn-sm" onclick="resolveRescheduleFlag('${f.id}')">Mark Resolved</button>
+    </div>`).join('');
+}
+async function resolveRescheduleFlag(id){
+  if(!supabaseClient) return;
+  await supabaseClient.from('reschedule_flags').update({ status:'resolved' }).eq('id', id);
+  toast('Marked resolved.','success');
+  await renderRescheduleFlags();
+}
+
+/* ===================== PROPOSAL BUILDER ===================== */
+async function analyzeProposalNotes(){
+  const notes = document.getElementById('proposalNotes').value.trim();
+  if(!notes){ toast('Paste discovery notes first.','error'); return; }
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){ toast('Add your Anthropic API key in Settings to enable AI extraction.','error'); return; }
+  toast('Analyzing notes with Claude...');
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Extract structured prospect details from discovery call notes or a transcript."),
+    buildUserContent(`Extract structured details from these discovery notes and return ONLY valid JSON (no markdown fences) with exactly these keys: business_name, contact_name, practice_type (one of: ${PRACTICE_TYPES.join(', ')}), location, pain_points, goals, proposed_services, proposed_investment (number, estimate reasonably if not stated), timeline.\n\nNotes:\n${notes}`, 'proposal')
+  );
+  if(!result.ok){ toast(result.message,'error'); return; }
+  try{
+    const p = JSON.parse(stripJsonFence(result.text));
+    document.getElementById('pBusinessName').value = p.business_name||document.getElementById('pBusinessName').value;
+    document.getElementById('pContactName').value = p.contact_name||document.getElementById('pContactName').value;
+    if(p.practice_type && PRACTICE_TYPES.includes(p.practice_type)) document.getElementById('pPracticeType').value = p.practice_type;
+    document.getElementById('pLocation').value = p.location||document.getElementById('pLocation').value;
+    document.getElementById('pInvestment').value = p.proposed_investment||document.getElementById('pInvestment').value;
+    document.getElementById('pTimeline').value = p.timeline||'';
+    document.getElementById('pPainPoints').value = p.pain_points||'';
+    document.getElementById('pGoals').value = p.goals||'';
+    document.getElementById('pServices').value = p.proposed_services||'';
+    toast('Notes analyzed — review the fields below.','success');
+  }catch(e){ toast('Could not parse the analysis. Try again or fill fields manually.','error'); }
+}
+function proposalMarkdownToHtml(md){
+  const lines = md.split('\n');
+  let html='', inList=false;
+  for(let line of lines){
+    line = line.trim();
+    if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
+    if(/^#{1,3}\s/.test(line)){ if(inList){html+='</ul>';inList=false;} html += `<h2>${escapeHtml(line.replace(/^#{1,3}\s/,''))}</h2>`; continue; }
+    if(/^[-*]\s/.test(line)){ if(!inList){html+='<ul>';inList=true;} html += `<li>${inlineMd(line.replace(/^[-*]\s/,''))}</li>`; continue; }
+    if(inList){ html+='</ul>'; inList=false; }
+    html += `<p>${inlineMd(line)}</p>`;
+  }
+  if(inList) html+='</ul>';
+  return html;
+}
+function inlineMd(s){ return escapeHtml(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }
+let lastProposalText = '';
+async function generateProposal(){
+  const business = document.getElementById('pBusinessName').value.trim();
+  if(!business){ toast('Add at least a business name.','error'); return; }
+  const outEl = document.getElementById('proposalOutput');
+  outEl.innerHTML = `<div class="ai-loading">Generating proposal with Claude...</div>`;
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){ outEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`; return; }
+  const details = `Business Name: ${business}
+Contact Name: ${document.getElementById('pContactName').value}
+Practice Type: ${document.getElementById('pPracticeType').value}
+Location: ${document.getElementById('pLocation').value}
+Pain Points: ${document.getElementById('pPainPoints').value}
+Goals: ${document.getElementById('pGoals').value}
+Proposed Services: ${document.getElementById('pServices').value}
+Proposed Investment: $${document.getElementById('pInvestment').value}/month
+Timeline: ${document.getElementById('pTimeline').value}
+Raw Discovery Notes: ${document.getElementById('proposalNotes').value}`;
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Write a complete, tailored sales proposal for a medical aesthetics practice considering Social Practice's services."),
+    buildUserContent(`Using the following prospect details, write a full proposal using ## markdown headers for each section, in this order: Executive Summary, Current Situation, Proposed Solution, What Social Practice Will Deliver, Investment & Package Options, Why Social Practice (exactly 3 specific reasons tied to their situation), Next Steps. Be specific to their practice type and pain points — never generic. Use bullet lists (-) where appropriate.\n\n${details}`, 'proposal'),
+    { maxTokens: 3000 }
+  );
+  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
+  lastProposalText = result.text;
+  outEl.innerHTML = proposalMarkdownToHtml(result.text);
+  document.getElementById('proposalSaveRow').classList.remove('hidden');
+}
+function copyProposal(){
+  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
+  navigator.clipboard.writeText(lastProposalText).then(()=>toast('Proposal copied to clipboard.','success'));
+}
+async function generateCanvaBrief(){
+  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
+  const card = document.getElementById('canvaBriefCard');
+  const outEl = document.getElementById('canvaBriefOutput');
+  card.classList.remove('hidden');
+  outEl.innerHTML = `<div class="ai-loading">Building Canva brief with Claude...</div>`;
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Turn a written sales proposal into a Canva design brief for a visual deck."),
+    `Here is a written proposal:\n\n${lastProposalText}\n\nWrite a Canva design brief for turning this into a visual proposal deck: recommend slide count and structure, per-slide content summary, suggested color palette (Social Practice brand: deep navy #1a1a2e and hot pink #e91e8c, clean/modern, medical aesthetics industry appropriate), font pairing suggestions, and imagery direction. Use ## markdown headers.`
+  );
+  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
+  outEl.innerHTML = proposalMarkdownToHtml(result.text);
+}
+async function saveProposal(){
+  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
+  const business = document.getElementById('pBusinessName').value.trim();
+  const value = Number(document.getElementById('pInvestment').value)||0;
+  const record = await ProposalsDB.insert({ lead_id: currentProposalLeadId, business_name: business, content: lastProposalText, value, status:'Sent', created_at:new Date().toISOString() });
+  if(currentProposalLeadId){
+    const lead = (await LeadsDB.getAll()).find(l=>l.id===currentProposalLeadId);
+    await LeadsDB.update(currentProposalLeadId, { stage:'Proposal Sent', proposal_value: value, last_contact: todayISO() });
+    await ensureFollowupForLead(currentProposalLeadId, 'Proposal');
+    if(HUBSPOT.isReady() && lead && lead.hubspot_deal_id){
+      try{
+        await HUBSPOT.updateDealStage(lead.hubspot_deal_id, 'Proposal Sent');
+        await HUBSPOT.updateDealAmount(lead.hubspot_deal_id, value);
+      }catch(e){ console.warn('HubSpot proposal sync failed:', e); }
+    }
+    currentProposalLeadId = null;
+  }
+  toast('Proposal saved.','success');
+  await renderSavedProposals();
+  await refreshPipeline();
+  await renderFollowupTable();
+}
+async function renderSavedProposals(){
+  const list = await ProposalsDB.getAll();
+  const wrap = document.getElementById('savedProposalsList');
+  const empty = document.getElementById('savedProposalsEmpty');
+  if(!list.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  wrap.innerHTML = list.map(p=>`
+    <div class="list-item">
+      <div><div class="list-item-title">${escapeHtml(p.business_name||'Untitled')}</div><div class="list-item-sub">${fmtMoney(p.value)}/mo · ${new Date(p.created_at).toLocaleDateString()} · ${p.status}</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="viewSavedProposal('${p.id}')">View</button>
+      </div>
+    </div>`).join('');
+}
+async function viewSavedProposal(id){
+  const p = (await ProposalsDB.getAll()).find(x=>x.id===id);
+  openModal(p.business_name||'Proposal', `<div class="proposal-view">${proposalMarkdownToHtml(p.content)}</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
+}
+async function loadFromReadai(){
+  const key = localStorage.getItem('readai_key');
+  if(!key){ toast('Add your Read.ai API key in Settings first.','error'); return; }
+  toast('Loading latest call from Read.ai...');
+  try{
+    const res = await fetch('https://api.read.ai/v1/sessions', {
+      headers: { 'Authorization': 'Bearer '+key }
+    });
+    if(!res.ok) throw new Error('Read.ai returned '+res.status);
+    const data = await res.json();
+    const calls = data.sessions || data.results || data.items || [];
+    if(!calls.length){ toast('No calls found in Read.ai.','error'); return; }
+    const latest = calls[0];
+    const transcript = latest.transcript || latest.transcript_text || JSON.stringify(latest);
+    document.getElementById('proposalNotes').value = transcript;
+    toast('Latest Read.ai transcript loaded.','success');
+  }catch(e){
+    toast('Could not reach Read.ai directly from the browser (likely CORS, or an invalid key). In production this call would route through a backend proxy.','error');
+  }
+}
+async function loadFromOtter(){
+  const key = localStorage.getItem('otter_key');
+  if(!key){ toast('Add your Otter.ai API key in Settings first.','error'); return; }
+  toast('Loading latest transcript from Otter.ai...');
+  try{
+    const res = await fetch('https://otter.ai/forward/api/v1/speeches', {
+      headers: { 'Authorization': 'Bearer '+key }
+    });
+    if(!res.ok) throw new Error('Otter.ai returned '+res.status);
+    const data = await res.json();
+    const speeches = data.speeches || data.results || data.items || [];
+    if(!speeches.length){ toast('No transcripts found in Otter.ai.','error'); return; }
+    const latest = speeches[0];
+    const transcript = latest.transcript || latest.transcript_text || JSON.stringify(latest);
+    document.getElementById('proposalNotes').value = transcript;
+    toast('Latest Otter.ai transcript loaded.','success');
+  }catch(e){
+    toast('Could not reach Otter.ai directly from the browser (likely CORS, or an invalid key). In production this call would route through a backend proxy.','error');
+  }
+}
+
+/* ===================== CALL NOTES ===================== */
+let callTimerInterval = null;
+let callTimerSeconds = 0;
+let lastCallSummary = null;
+
+function populateCallLeadOptions(){
+  const list = document.getElementById('callLeadOptions');
+  if(!list) return;
+  list.innerHTML = allLeadsCache.map(l=>`<option value="${escapeHtml(l.business_name)}"></option>`).join('');
+}
+function initCallNotesTab(){
+  const dateEl = document.getElementById('clCallDate');
+  if(dateEl && !dateEl.value) dateEl.value = todayISO();
+  populateCallLeadOptions();
+}
+function formatDuration(totalSeconds){
+  const m = String(Math.floor(totalSeconds/60)).padStart(2,'0');
+  const s = String(totalSeconds%60).padStart(2,'0');
+  return `${m}:${s}`;
+}
+function startCallTimer(){
+  if(callTimerInterval) return;
+  callTimerSeconds = 0;
+  document.getElementById('callTimerDisplay').textContent = '00:00';
+  document.getElementById('btnStartCallTimer').disabled = true;
+  callTimerInterval = setInterval(()=>{
+    callTimerSeconds++;
+    document.getElementById('callTimerDisplay').textContent = formatDuration(callTimerSeconds);
+  }, 1000);
+}
+function stopCallTimer(){
+  if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
+  document.getElementById('btnStartCallTimer').disabled = false;
+}
+function renderCallSummary(d){
+  const list = (arr)=> (arr && arr.length) ? `<ul>${arr.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '<p class="muted">None noted.</p>';
+  return `
+    <h2>Call Overview</h2>
+    <p>${escapeHtml(d.call_overview||'')} — ${escapeHtml(d.callType||'')} with ${escapeHtml(d.callerName||'Unknown')} on ${fmtDate(d.callDate)}${d.duration?` (${escapeHtml(d.duration)})`:''}</p>
+    <h2>Pain Points Identified</h2>${list(d.pain_points)}
+    <h2>Goals Discussed</h2>${list(d.goals)}
+    <h2>Objections Raised</h2>${list(d.objections)}
+    <h2>Services to Propose</h2>${list(d.services_to_propose)}
+    <h2>Agreed Next Steps</h2>${list(d.next_steps)}
+    <h2>Recommended Proposal Value</h2><p><strong>${fmtMoney(d.recommended_value)}/month</strong></p>
+  `;
+}
+async function processCallNotes(){
+  const notes = document.getElementById('clQuickNotes').value.trim();
+  if(!notes){ toast('Add some notes first.','error'); return; }
+  stopCallTimer();
+  const leadName = document.getElementById('clLeadName').value.trim();
+  const callType = document.getElementById('clCallType').value;
+  const callDate = document.getElementById('clCallDate').value || todayISO();
+  const callerName = document.getElementById('clCallerName').value.trim();
+  const duration = formatDuration(callTimerSeconds);
+  const outEl = document.getElementById('callSummaryOutput');
+  outEl.innerHTML = `<div class="ai-loading">Processing call notes with Claude...</div>`;
+  document.getElementById('callActionsRow').classList.add('hidden');
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){
+    outEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`;
+    return;
+  }
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Turn raw bullet-point call notes into a structured call summary for a medical aesthetics prospect or client."),
+    `Call details:\nLead/Business: ${leadName||'Unknown'}\nCall Type: ${callType}\nCall Date: ${callDate}\nCaller (who Mary spoke with): ${callerName||'Unknown'}\nCall Duration: ${duration}\n\nRaw notes taken during the call:\n${notes}\n\nReturn ONLY valid JSON (no markdown fences) with these exact keys: call_overview (1-2 sentence summary), pain_points (array of strings), goals (array of strings), objections (array of strings), services_to_propose (array of strings — choose from Content Strategy, Content Creation, Paid Ads, Community Management, Full-Service Management, or note others discussed), next_steps (array of strings), recommended_value (number — a reasonable monthly investment in USD based on the scope discussed).`,
+    { maxTokens: 1800 }
+  );
+  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
+  try{
+    const parsed = JSON.parse(stripJsonFence(result.text));
+    lastCallSummary = { leadName, callType, callDate, callerName, duration, notes, ...parsed };
+    outEl.innerHTML = renderCallSummary(lastCallSummary);
+    document.getElementById('callActionsRow').classList.remove('hidden');
+  }catch(e){
+    outEl.innerHTML = `<p>${escapeHtml(result.text)}</p>`;
+  }
+}
+function sendCallToProposal(){
+  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
+  switchTab('proposal');
+  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName);
+  if(lead){
+    currentProposalLeadId = lead.id;
+    document.getElementById('pBusinessName').value = lead.business_name;
+    document.getElementById('pContactName').value = lead.contact_name;
+    document.getElementById('pPracticeType').value = lead.practice_type;
+    document.getElementById('pLocation').value = lead.location;
+  } else {
+    document.getElementById('pBusinessName').value = lastCallSummary.leadName || '';
+  }
+  document.getElementById('pPainPoints').value = (lastCallSummary.pain_points||[]).join('; ');
+  document.getElementById('pGoals').value = (lastCallSummary.goals||[]).join('; ');
+  document.getElementById('pServices').value = (lastCallSummary.services_to_propose||[]).join('; ');
+  document.getElementById('pInvestment').value = lastCallSummary.recommended_value || '';
+  document.getElementById('proposalNotes').value = lastCallSummary.notes || '';
+  toast('Proposal Builder pre-filled from call summary.','success');
+}
+async function logCallToHubspot(){
+  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
+  if(!HUBSPOT.isReady()){ toast('Add your HubSpot API key in Settings first.','error'); return; }
+  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName) || (await LeadsDB.getAll()).find(l=>l.business_name===lastCallSummary.leadName);
+  if(!lead || !lead.hubspot_contact_id){ toast('No matching HubSpot contact found for this lead.','error'); return; }
+  const body = `Call Overview: ${lastCallSummary.call_overview||''}\n\nPain Points: ${(lastCallSummary.pain_points||[]).join('; ')}\n\nGoals: ${(lastCallSummary.goals||[]).join('; ')}\n\nObjections: ${(lastCallSummary.objections||[]).join('; ')}\n\nNext Steps: ${(lastCallSummary.next_steps||[]).join('; ')}`;
+  try{
+    await HUBSPOT.logCall(lead.hubspot_contact_id, body);
+    toast('Call notes logged to HubSpot.','success');
+  }catch(e){
+    toast('Could not log to HubSpot (likely CORS from the browser, or an invalid key).','error');
+  }
+}
+async function saveCallNotes(){
+  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
+  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName);
+  await CallNotesDB.insert({
+    lead_id: lead ? lead.id : null,
+    lead_name: lastCallSummary.leadName || '',
+    call_type: lastCallSummary.callType,
+    call_date: lastCallSummary.callDate,
+    caller_name: lastCallSummary.callerName,
+    duration: lastCallSummary.duration,
+    raw_notes: lastCallSummary.notes,
+    call_overview: lastCallSummary.call_overview,
+    pain_points: lastCallSummary.pain_points,
+    goals: lastCallSummary.goals,
+    objections: lastCallSummary.objections,
+    services_to_propose: lastCallSummary.services_to_propose,
+    next_steps: lastCallSummary.next_steps,
+    recommended_value: lastCallSummary.recommended_value
+  });
+  toast('Call notes saved.','success');
+  await renderSavedCalls();
+}
+async function renderSavedCalls(){
+  const list = await CallNotesDB.getAll();
+  const wrap = document.getElementById('savedCallsList');
+  const empty = document.getElementById('savedCallsEmpty');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  wrap.innerHTML = list.map(c=>`
+    <div class="list-item">
+      <div><div class="list-item-title">${escapeHtml(c.lead_name||'Unknown')}</div><div class="list-item-sub">${fmtDate(c.call_date)} · ${escapeHtml(c.call_type||'')}</div></div>
+      <button class="btn btn-sm" onclick="viewSavedCall('${c.id}')">View</button>
+    </div>`).join('');
+}
+async function viewSavedCall(id){
+  const c = (await CallNotesDB.getAll()).find(x=>x.id===id);
+  if(!c) return;
+  const html = renderCallSummary({
+    call_overview: c.call_overview, callType: c.call_type, callerName: c.caller_name, callDate: c.call_date, duration: c.duration,
+    pain_points: c.pain_points, goals: c.goals, objections: c.objections, services_to_propose: c.services_to_propose,
+    next_steps: c.next_steps, recommended_value: c.recommended_value
+  });
+  openModal(`${c.lead_name||'Call'} — ${fmtDate(c.call_date)}`, `<div class="proposal-view">${html}</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
+}
+
+/* ===================== FOLLOW-UP TRACKER ===================== */
+async function renderFollowupAlerts(){
+  const followups = (await FollowupsDB.getAll()).filter(f=>!['Signed','Lost'].includes(f.status));
+  const t = todayISO();
+  const overdue = followups.filter(f=>f.next_date < t);
+  const dueToday = followups.filter(f=>f.next_date === t);
+  let html = '';
+  if(overdue.length) html += `<div class="alert-banner alert-red">⚠ ${overdue.length} follow-up${overdue.length>1?'s are':' is'} overdue — ${overdue.map(f=>escapeHtml(f.business_name)).join(', ')}</div>`;
+  if(dueToday.length) html += `<div class="alert-banner alert-amber">● ${dueToday.length} follow-up${dueToday.length>1?'s':''} due today — ${dueToday.map(f=>escapeHtml(f.business_name)).join(', ')}</div>`;
+  document.getElementById('followupAlerts').innerHTML = html;
+}
+async function renderFollowupTable(){
+  const followups = await FollowupsDB.getAll();
+  const t = todayISO();
+  const body = document.getElementById('followupTableBody');
+  const empty = document.getElementById('followupEmpty');
+  if(!followups.length){ body.innerHTML=''; empty.classList.remove('hidden'); await renderFollowupAlerts(); return; }
+  empty.classList.add('hidden');
+  const prosperoOn = !!localStorage.getItem('prospero_key');
+  body.innerHTML = followups.map(f=>{
+    const overdue = f.next_date < t && !['Signed','Lost'].includes(f.status);
+    const dueToday = f.next_date === t && !['Signed','Lost'].includes(f.status);
+    return `<tr>
+      <td class="biz-name">${escapeHtml(f.business_name)}<br><span class="muted" style="font-size:11.5px;">${escapeHtml(f.contact_name||'')}</span></td>
+      <td>${escapeHtml(f.type)}</td>
+      <td>${fmtDate(f.sent_date)}</td>
+      <td>${f.count}</td>
+      <td style="${overdue?'color:#c0334a;font-weight:700;':dueToday?'color:#a3690f;font-weight:700;':''}">${fmtDate(f.next_date)}</td>
+      <td><span class="badge" style="background:var(--bg-tertiary);">${f.status}</span></td>
+      <td><div class="actions-cell">
+        <button class="btn btn-sm btn-pink" onclick="openFollowUpNowModal('${f.id}')" ${['Signed','Lost'].includes(f.status)?'disabled':''}>Follow Up Now</button>
+        ${prosperoOn ? `<button class="btn btn-sm" onclick="sendAgreementViaProspero('${f.id}')">Send Agreement</button>` : ''}
+      </div></td>
+    </tr>`;
+  }).join('');
+  await renderFollowupAlerts();
+}
+function followupToneInstruction(count){
+  if(count<=0) return "This is the first follow-up. Write a warm, low-key check-in.";
+  if(count===1) return "This is the second follow-up. Add value — share a relevant insight, quick tip, or mini case study relevant to their practice type.";
+  if(count===2) return "This is the third follow-up. Create gentle urgency without being pushy or salesy.";
+  return "This is follow-up number "+(count+1)+". Write a final, respectful check-in that offers to answer any remaining questions and leaves the door open.";
+}
+async function openFollowUpNowModal(id){
+  const followups = await FollowupsDB.getAll();
+  const f = followups.find(x=>x.id===id);
+  const leads = await LeadsDB.getAll();
+  const lead = leads.find(l=>l.id===f.lead_id) || {};
+  openModal(`Follow Up — ${f.business_name}`, `<div class="ai-loading">Drafting follow-up with Claude...</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){
+    updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p><textarea id="aiDraftText" rows="10"></textarea>`);
+    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
+    return;
+  }
+  const result = await callClaude(
+    await buildSystemPrompt("Task: Draft a follow-up message for a prospect who was sent a "+f.type+"."),
+    `Lead/business: ${f.business_name}\nContact: ${f.contact_name||lead.contact_name||''}\nPractice type: ${lead.practice_type||'n/a'}\nWhat was sent: ${f.type}\nDate sent: ${fmtDate(f.sent_date)}\nFollow-up count so far: ${f.count}\nNotes: ${lead.notes||'None'}\n\n${followupToneInstruction(f.count)}\n\nWrite ONLY the follow-up message (with subject line if it's an email), no preamble.`
+  );
+  if(!result.ok){ updateModalBody(`<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`); return; }
+  updateModalBody(`<textarea id="aiDraftText" rows="12">${escapeHtml(result.text)}</textarea>`);
+  updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
+}
+async function markFollowupSent(id){
+  const followups = await FollowupsDB.getAll();
+  const f = followups.find(x=>x.id===id);
+  const draftEl = document.getElementById('aiDraftText');
+  const draftText = draftEl ? draftEl.value : (window.__lastAiDraftText || '');
+  const t = todayISO();
+  await FollowupsDB.update(id, { count: (f.count||0)+1, next_date: addBusinessDays(t,2), status:'Followed Up', sent_date: t });
+  let lead = null;
+  if(f.lead_id){
+    await LeadsDB.update(f.lead_id, { last_contact: t });
+    lead = (await LeadsDB.getAll()).find(l=>l.id===f.lead_id);
+  }
+  closeModal();
+  toast('Follow-up sent — next one scheduled.','success');
+  await renderFollowupTable();
+  await refreshPipeline();
+  if(HUBSPOT.isReady() && lead && lead.hubspot_contact_id){
+    try{ await HUBSPOT.logEmail(lead.hubspot_contact_id, `${f.type} follow-up`, draftText); }
+    catch(e){ console.warn('HubSpot follow-up log failed:', e); }
+  }
+}
+function sendAgreementViaProspero(id){
+  toast('Prospero agreement sending requires an authenticated API session — wired for connection once Prospero OAuth is completed.','error');
+}
+
+/* ===================== EMBEDDED CHAT WIDGETS ===================== */
+const CHAT_LABELS = { pipeline:'Sales Pipeline', inbox:'Inbox Manager', proposal:'Proposal Builder', callnotes:'Call Notes', followup:'Follow-Up Tracker' };
+function initChatWidgets(){
+  Object.keys(CHAT_LABELS).forEach(key=>{
+    document.getElementById('chat-container-'+key).innerHTML = `
+    <div class="chat-widget">
+      <div class="chat-header">✦ Ask Claude — ${CHAT_LABELS[key]}</div>
+      <div class="chat-messages" id="chat-messages-${key}"><div class="chat-empty">Ask a question or give an instruction about this tab.</div></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input-${key}" placeholder="Ask about ${CHAT_LABELS[key].toLowerCase()}..." onkeydown="if(event.key==='Enter') sendChatMessage('${key}')">
+        <label class="chat-upload-btn" title="Attach file">📎<input type="file" id="chat-file-${key}" style="display:none;" onchange="handleFileUpload('chat-file-${key}','chat-input-${key}','chat-${key}')"></label>
+        <button class="btn btn-pink btn-sm" onclick="sendChatMessage('${key}')">Send</button>
+      </div>
+    </div>`;
+  });
+}
+async function buildChatContext(key){
+  if(key==='pipeline'){
+    const leads = await LeadsDB.getAll();
+    return `Current pipeline: ${leads.length} leads. Breakdown by stage: ${STAGES.map(s=>`${s}: ${leads.filter(l=>l.stage===s).length}`).join(', ')}. Leads: ${leads.map(l=>`${l.business_name} (${l.stage}, ${fmtMoney(l.proposal_value)}/mo)`).join('; ')}`;
+  }
+  if(key==='inbox') return lastInboxProcessed ? `Last processed email — category: ${lastInboxProcessed.category}, summary: ${lastInboxProcessed.sender_summary}` : 'No email processed yet in this session.';
+  if(key==='proposal') return lastProposalText ? `Current proposal draft in progress for ${document.getElementById('pBusinessName').value}:\n${lastProposalText.slice(0,1500)}` : 'No proposal generated yet in this session.';
+  if(key==='callnotes') return lastCallSummary ? `Last processed call — lead: ${lastCallSummary.leadName}, type: ${lastCallSummary.callType}, overview: ${lastCallSummary.call_overview}` : 'No call has been processed yet in this session.';
+  if(key==='followup'){
+    const followups = await FollowupsDB.getAll();
+    const t = todayISO();
+    const overdue = followups.filter(f=>f.next_date<t);
+    return `${followups.length} active follow-ups. ${overdue.length} overdue: ${overdue.map(f=>f.business_name).join(', ')}`;
+  }
+  return '';
+}
+/* ===================== CHAT-BASED DELETE CONFIRMATION ===================== */
+let chatPendingDelete = {};
+function looksLikeDeleteRequest(msg){
+  return /\b(delete|remove|get rid of|erase|trash)\b/i.test(msg);
+}
+function isConfirmReply(msg){
+  const m = msg.trim().toLowerCase();
+  return /^(yes|y|yep|yeah|yup|confirm|confirmed|delete it|do it|go ahead|proceed)\b/.test(m);
+}
+function isCancelReply(msg){
+  const m = msg.trim().toLowerCase();
+  return /^(no|n|nope|cancel|stop|nevermind|never mind|don'?t|do not)\b/.test(m);
+}
+function buildDeleteConfirmMessage(match){
+  if(match.matched_type === 'lead'){
+    return `I'm about to permanently delete ${match.matched_label}. This will also remove all their communications history, proposals, and follow-up entries. This cannot be undone. Type YES to confirm or NO to cancel.`;
+  }
+  return `I'm about to permanently delete ${match.matched_label}. This cannot be undone. Type YES to confirm or NO to cancel.`;
+}
+async function resolveDeleteTarget(key, msg){
+  const leads = await LeadsDB.getAll();
+  let candidates = leads.map(l=>({ type:'lead', id:l.id, label:`${l.contact_name} from ${l.business_name}` }));
+  if(key==='proposal'){
+    const proposals = await ProposalsDB.getAll();
+    candidates = candidates.concat(proposals.map(p=>({ type:'proposal', id:p.id, label:`the proposal for ${p.business_name} (${new Date(p.created_at).toLocaleDateString()})` })));
+  }
+  if(key==='followup'){
+    const followups = await FollowupsDB.getAll();
+    candidates = candidates.concat(followups.map(f=>({ type:'followup', id:f.id, label:`the ${f.type} follow-up for ${f.business_name}` })));
+  }
+  if(key==='callnotes'){
+    const calls = await CallNotesDB.getAll();
+    candidates = candidates.concat(calls.map(c=>({ type:'callnote', id:c.id, label:`the call notes for ${c.lead_name} on ${fmtDate(c.call_date)}` })));
+  }
+  if(!candidates.length) return null;
+  const result = await callClaude(
+    'You identify which record (if any) a user is asking to delete, matched against a list of candidate records. Respond with ONLY valid JSON, no markdown fences, no explanation.',
+    `User message: "${msg}"\n\nCandidate records (type | id | label):\n${candidates.map(c=>`${c.type} | ${c.id} | ${c.label}`).join('\n')}\n\nReturn JSON with exactly these keys: is_delete_request (boolean — true if the user is asking to delete/remove something), matched_id (the id string of the single candidate they mean, or null if unclear/no match), matched_type (the type of the matched candidate, or null), matched_label (the label of the matched candidate, or null).`
+  );
+  if(!result.ok) return null;
+  try{ return JSON.parse(stripJsonFence(result.text)); }
+  catch(e){ return null; }
+}
+async function executeChatDelete(pending){
+  if(pending.type === 'lead'){
+    const lead = await deleteLeadCascade(pending.id);
+    await refreshPipeline();
+    await renderFollowupTable();
+    await renderSavedProposals();
+    return lead ? `${lead.contact_name} from ${lead.business_name}` : pending.label;
+  }
+  if(pending.type === 'proposal'){
+    await ProposalsDB.remove(pending.id);
+    await renderSavedProposals();
+    return pending.label;
+  }
+  if(pending.type === 'followup'){
+    await FollowupsDB.remove(pending.id);
+    await renderFollowupTable();
+    return pending.label;
+  }
+  if(pending.type === 'callnote'){
+    await CallNotesDB.remove(pending.id);
+    await renderSavedCalls();
+    return pending.label;
+  }
+  return pending.label;
+}
+async function sendChatMessage(key){
+  const input = document.getElementById('chat-input-'+key);
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value='';
+  const messagesEl = document.getElementById('chat-messages-'+key);
+  const emptyEl = messagesEl.querySelector('.chat-empty');
+  if(emptyEl) emptyEl.remove();
+  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user">${escapeHtml(msg)}</div>`);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  if(chatPendingDelete[key]){
+    const pending = chatPendingDelete[key];
+    if(isConfirmReply(msg)){
+      delete chatPendingDelete[key];
+      const label = await executeChatDelete(pending);
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(label)} has been deleted.</div>`);
+      toast(`${label} has been deleted`,'success');
+    } else if(isCancelReply(msg)){
+      delete chatPendingDelete[key];
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Got it, no changes were made.</div>`);
+    } else {
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Please reply YES to confirm the deletion or NO to cancel.</div>`);
+    }
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return;
+  }
+
+  const key2 = localStorage.getItem('anthropic_key');
+  if(!key2){
+    messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</div>`);
+    return;
+  }
+
+  if(looksLikeDeleteRequest(msg)){
+    const loadingId1 = 'load-'+Date.now();
+    messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai" id="${loadingId1}">Thinking...</div>`);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    const match = await resolveDeleteTarget(key, msg);
+    document.getElementById(loadingId1).remove();
+    if(match && match.is_delete_request && match.matched_id){
+      chatPendingDelete[key] = { type: match.matched_type, id: match.matched_id, label: match.matched_label };
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildDeleteConfirmMessage(match))}</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    if(match && match.is_delete_request && !match.matched_id){
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find a specific match for that — could you tell me the exact lead or business name?</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+  }
+
+  const loadingId = 'load-'+Date.now();
+  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai" id="${loadingId}">Thinking...</div>`);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  const context = await buildChatContext(key);
+  const result = await callClaude(
+    await buildSystemPrompt(`You are embedded in the ${CHAT_LABELS[key]} tab. Use the tab context below to answer or take the requested action (describe what you would do, since you cannot directly click buttons in the UI).\n\nTab context:\n${context}`),
+    buildUserContent(msg, 'chat-'+key)
+  );
+  document.getElementById(loadingId).remove();
+  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(result.ok ? result.text : result.message)}</div>`);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* ===================== INIT ===================== */
+async function init(){
+  initTheme();
+  updateLiveDate();
+  setInterval(updateLiveDate, 60000);
+  initSupabase();
+  loadSettingsIntoForm();
+  populateFilterOptions();
+  await seedIfEmpty();
+  await refreshPipeline();
+  await renderInboxHistory();
+  await renderRescheduleFlags();
+  await renderSavedProposals();
+  await renderFollowupTable();
+  await renderSavedCalls();
+  populateCallLeadOptions();
+  refreshConnectionSlots();
+  initChatWidgets();
+  renderConnStatusTable();
+  handleGmailOAuthRedirect();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

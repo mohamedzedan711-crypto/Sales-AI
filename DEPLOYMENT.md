@@ -1,0 +1,149 @@
+# Deploying the Async Qualification Funnel + Voice Profile Backend
+
+This covers everything beyond `index.html` — the pieces that need a real
+Supabase project to run: the schema additions, the Edge Functions, the
+scheduled jobs, and the questionnaire page's Supabase credentials.
+
+**Deployment works with every provider key empty.** Anthropic, HubSpot,
+and Read.ai keys — plus the Gmail connection — are no longer set via the
+CLI. They live in Settings → Integrations inside the app itself, and each
+one goes live the moment it's saved there. No redeploy needed to add,
+change, or remove one. The only things that still need to be true CLI
+secrets are infrastructure-level (the Supabase service role, the admin
+password gate, and the Gmail OAuth app's own client ID/secret — see why
+below).
+
+Project: `https://cskenvvssmblqpbvtrig.supabase.co`
+
+## 0. Prerequisites
+
+- [Supabase CLI](https://supabase.com/docs/guides/cli) installed and logged in (`supabase login`), linked to this project (`supabase link --project-ref cskenvvssmblqpbvtrig`).
+- A Google Cloud OAuth app registered for Gmail API access (client ID + client secret) — this is a one-time infrastructure setup, separate from connecting an actual Gmail account, which now happens through the app's "Connect Gmail" button. Scopes to request: `gmail.send`, `gmail.readonly`, `userinfo.email`.
+
+Anthropic, HubSpot, and Read.ai accounts/keys are **not** needed at deploy time — add them later through the app.
+
+## 1. Apply the schema
+
+In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`. All three are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`).
+
+`supabase_schema_v3.sql` adds `api_credentials` and `oauth_states` — note that neither table gets an anon-access policy. That's intentional: the browser (and questionnaire.html) can never read or write these directly. Only Edge Functions running with the service-role key can, and even those go through an admin-password check for writes (see step 3).
+
+## 2. Fill in the questionnaire page's Supabase credentials
+
+Open `questionnaire.html` and replace the placeholder:
+
+```js
+const SUPABASE_ANON_KEY = 'FILL_IN_YOUR_SUPABASE_ANON_KEY';
+```
+
+with your project's actual anon/public key (Project Settings → API in the Supabase dashboard). This is safe to embed client-side — Row Level Security on `questionnaire_responses` restricts it to insert-only, so it can't read or modify anything else (and, per step 1, it has zero access to `api_credentials`).
+
+Deploy `questionnaire.html` alongside `index.html` on whatever static host you're using (same repo, same deploy).
+
+## 3. Set the infrastructure secrets (this is now the whole list)
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically — don't set those. Everything else that remains a true secret:
+
+```bash
+supabase secrets set GMAIL_CLIENT_ID=...
+supabase secrets set GMAIL_CLIENT_SECRET=...
+supabase secrets set ADMIN_PANEL_PASSWORD=choose-a-strong-password
+supabase secrets set QUESTIONNAIRE_BASE_URL=https://yourdomain.com
+```
+
+- `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` identify the OAuth *app* itself (must match what's registered in Google Cloud Console, redirect URI and all) — not a per-user credential, so it can't reasonably be entered through a form. This is the one exception to "everything's in the app now."
+- `ADMIN_PANEL_PASSWORD` gates every write to `api_credentials` (saving/testing a key, disconnecting one, starting the Gmail OAuth flow). There's no login system in this app otherwise — whoever knows this password can manage integrations from Settings → Integrations. Treat it like any other secret; don't share it outside the team that manages this deployment.
+- `QUESTIONNAIRE_BASE_URL` is wherever `index.html`/`questionnaire.html` are actually reachable (no trailing slash) — used to build the questionnaire link in emails, and to redirect the browser back after the Gmail OAuth flow completes.
+
+### Register the Gmail OAuth redirect URI
+
+In Google Cloud Console, under the OAuth client's **Authorized redirect URIs**, add exactly:
+
+```
+https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/gmail-oauth-callback
+```
+
+This has to match byte-for-byte or Google will reject the callback.
+
+## 4. Deploy the functions
+
+```bash
+supabase functions deploy sync-hubspot-leads
+supabase functions deploy qualify-lead
+supabase functions deploy send-booking-email
+supabase functions deploy pull-transcripts
+supabase functions deploy check-booking-replies
+supabase functions deploy save-credential
+supabase functions deploy get-credentials-status
+supabase functions deploy disconnect-credential
+supabase functions deploy gmail-oauth-start
+supabase functions deploy gmail-oauth-callback
+```
+
+`send-booking-email` is called directly from the app (with the anon key) when Mary clicks "Confirm & Send" in the Book Meeting modal. `save-credential`, `disconnect-credential`, and `gmail-oauth-start` are called directly from Settings → Integrations (admin-password gated). `get-credentials-status` is called from Settings to render the connection badges (read-only, no admin gate — it never returns key values). `gmail-oauth-callback` is only ever called by Google's redirect, never directly.
+
+## 5. Wire the questionnaire-response webhook
+
+In the Supabase Dashboard: **Database → Webhooks → Create a new webhook**
+- Table: `questionnaire_responses`
+- Events: `INSERT`
+- Type: HTTP Request → your `qualify-lead` function URL (`https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/qualify-lead`)
+- Header: `Authorization: Bearer <service_role_key>` (Database Webhooks send with the service role by default in recent Supabase versions — confirm this is set so the function can read `leads` regardless of RLS)
+
+## 6. Schedule the recurring functions (pg_cron)
+
+Run in the SQL editor (requires the `pg_cron` and `pg_net` extensions, enabled by default on most Supabase projects — enable them under Database → Extensions if not):
+
+```sql
+select cron.schedule(
+  'sync-hubspot-leads-every-15-min',
+  '*/15 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/sync-hubspot-leads',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'))
+  );
+  $$
+);
+
+select cron.schedule(
+  'pull-transcripts-every-30-min',
+  '*/30 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/pull-transcripts',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'))
+  );
+  $$
+);
+
+select cron.schedule(
+  'check-booking-replies-every-15-min',
+  '*/15 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/check-booking-replies',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'))
+  );
+  $$
+);
+```
+
+If `current_setting('app.settings.service_role_key')` isn't populated in your project, paste the service role key directly into the header instead (Project Settings → API → service_role key) — treat it the same as any other secret. Note these scheduled functions will fail gracefully (clear "not connected" error, visible in the function's logs) until the corresponding keys are added through the app — that's expected until step 7 below is done.
+
+## 7. In the app itself
+
+- Settings → Database: connect Supabase (URL + anon key), enable it.
+- Settings → Integrations: enter the `ADMIN_PANEL_PASSWORD` you set in step 3, then add the Anthropic, HubSpot, and Read.ai keys one at a time — each is live-tested on save, so a bad key shows "Invalid Key" instead of silently failing later. Click "Connect Gmail" and complete the Google consent screen; it'll redirect back here and show the connected account's email.
+- Settings → Qualification Thresholds: set the real minimum and ideal monthly budget numbers — these start at $0 and the automation won't meaningfully qualify anyone until they're set.
+- Settings → Mary's Voice Profile: paste real email samples, click Generate, review, Save.
+
+Note: the existing Settings fields for Anthropic/HubSpot/Read.ai elsewhere on the page (under AI, CRM, Calls & Proposals) are separate from Integrations — those power this app's own in-browser features (drafting emails, the manual HubSpot sync button, etc.) and are unrelated to the backend automation. You'll likely want the same key in both places, but they're independent by design.
+
+## Known gaps to confirm once you have real API access
+
+- **Read.ai**: `pull-transcripts`'s endpoint (`api.read.ai/v1/sessions`) and field names (`session.attendees`, `session.transcript`, etc.) are a best-effort guess at a reasonable REST shape — adjust once you can see Read.ai's actual API docs or a sample response. The same guessed endpoint is used for the Read.ai key test in `save-credential`.
+
+## Lead sources
+
+HubSpot is the single lead-entry point. `sync-hubspot-leads` is the sole automated path new leads enter the pipeline — ad platforms (Facebook, Instagram, Google, LinkedIn) feed HubSpot directly on HubSpot's side, so every synced lead is simply tagged `source: 'HubSpot'`. DM Manager and its Instagram/Facebook/LinkedIn connections have been removed entirely. Manual lead entry ("+ Add Lead" in the Sales Pipeline tab, including the paste-and-extract-with-Claude flow) remains available as a fallback for leads that aren't in HubSpot yet — those can be tagged Referral, Website, Cold Outreach, or Other.

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node --check __TRACKED_VAR__/extracted.js)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(export SCRATCH=\"/c/Users/moham/AppData/Local/Temp/claude/C--Users-moham-Downloads-Sales-AI/f452bfb6-ae4a-42c7-9414-e62b712c112c/scratchpad\")",
+      "Bash(cd \"/c/Users/moham/Downloads/Sales AI\")"
+    ]
+  }
+}
