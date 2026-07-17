@@ -1,7 +1,11 @@
 // Called from Settings > Integrations when the admin saves an Anthropic,
-// HubSpot, or Read.ai key. Runs a lightweight live test call before ever
-// marking the key "connected" — a key that doesn't actually work is
-// stored as "invalid" instead, so the badge never lies.
+// HubSpot, Read.ai, or Fathom key. Runs a lightweight live test call
+// before ever marking the key "connected" — a key that doesn't actually
+// work is stored as "invalid" instead, so the badge never lies.
+//
+// Read.ai and Fathom are independent, parallel, both-optional credentials
+// — Fathom is being introduced alongside Read.ai, not replacing it (see
+// pull-transcripts, which now pulls from whichever of the two is connected).
 //
 // Gated behind an admin password (ADMIN_PANEL_PASSWORD secret) — this is
 // the only way api_credentials ever gets written to from outside an
@@ -11,7 +15,7 @@ import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { verifyAdminPassword } from '../_shared/credentials.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const TESTABLE_KEYS = ['anthropic', 'hubspot', 'readai'];
+const TESTABLE_KEYS = ['anthropic', 'hubspot', 'readai', 'fathom'];
 
 async function testKey(keyName: string, keyValue: string): Promise<boolean> {
   try {
@@ -39,6 +43,12 @@ async function testKey(keyName: string, keyValue: string): Promise<boolean> {
     }
     if (keyName === 'readai') {
       const res = await fetch('https://api.read.ai/v1/sessions?limit=1', {
+        headers: { Authorization: `Bearer ${keyValue}` },
+      });
+      return res.ok;
+    }
+    if (keyName === 'fathom') {
+      const res = await fetch('https://api.fathom.video/v1/calls?limit=1', {
         headers: { Authorization: `Bearer ${keyValue}` },
       });
       return res.ok;

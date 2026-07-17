@@ -248,6 +248,11 @@ tr:hover td{background:var(--bg-secondary);}
 [data-theme="dark"] .alert-red{background:#3a1420;color:#ff8fa3;}
 [data-theme="dark"] .alert-amber{background:#332411;color:#fbbf24;}
 
+/* subtabs (DM Manager) */
+.subtabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+.subtab{padding:10px 18px;font-size:13.5px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;}
+.subtab.active{color:var(--pink);border-bottom-color:var(--pink);}
+
 /* settings */
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .settings-section-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
@@ -279,6 +284,7 @@ tr:hover td{background:var(--bg-secondary);}
     <div class="nav-tabs" id="navTabs">
       <div class="nav-tab active" data-tab="pipeline">Sales Pipeline</div>
       <div class="nav-tab" data-tab="inbox">Inbox Manager</div>
+      <div class="nav-tab" data-tab="dm">DM Manager</div>
       <div class="nav-tab" data-tab="proposal">Proposal Builder</div>
       <div class="nav-tab" data-tab="callnotes">Call Notes</div>
       <div class="nav-tab" data-tab="followup">Follow-Up Tracker</div>
@@ -305,6 +311,7 @@ tr:hover td{background:var(--bg-secondary);}
       <div class="card-title">Active Leads</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+        <button class="btn" id="btnSyncMonday" onclick="syncMonday()" style="display:none;">↻ Sync Monday</button>
         <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
       </div>
     </div>
@@ -384,6 +391,22 @@ tr:hover td{background:var(--bg-secondary);}
   </div>
 
   <div id="chat-container-inbox"></div>
+</section>
+
+<!-- ============ TAB 3: DM MANAGER ============ -->
+<section class="tab-content" id="tab-dm">
+  <h1 class="page-title">DM Manager</h1>
+  <p class="page-sub">Instagram, Facebook, and LinkedIn DMs — drafted in Mary's voice, same job as Inbox Manager but for DMs. Not a lead source; leads only enter through HubSpot.</p>
+
+  <div class="subtabs" id="dmSubtabs">
+    <div class="subtab active" data-platform="Instagram">Instagram</div>
+    <div class="subtab" data-platform="Facebook">Facebook</div>
+    <div class="subtab" data-platform="LinkedIn">LinkedIn</div>
+  </div>
+
+  <div id="dmPlatformPanels"></div>
+
+  <div id="chat-container-dm"></div>
 </section>
 
 <!-- ============ TAB 4: PROPOSAL BUILDER ============ -->
@@ -557,6 +580,10 @@ tr:hover td{background:var(--bg-secondary);}
           <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
         </div>
         <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
+        <div class="form-row" style="margin-top:14px;"><label>Monday.com API Key <span id="badge-monday_key"></span></label>
+          <input type="password" id="monday_key"></div>
+        <button class="btn btn-sm" onclick="saveSetting('monday_key')">Save</button>
+        <p class="muted" style="font-size:11.5px;margin-top:10px;">⚠️ Consolidating onto HubSpot alone is still an open decision — Mary currently runs both HubSpot and Monday.com and knows they're duplicated, but that isn't settled yet. Both stay trackable here until she decides.</p>
       </div>
 
       <div class="card">
@@ -618,11 +645,11 @@ tr:hover td{background:var(--bg-secondary);}
 
       <div class="card">
         <div class="settings-section-title">🎯 Qualification Thresholds</div>
-        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Leave at $0 until you set real numbers.</p>
+        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
         <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
-          <input type="number" id="qc_min_budget_floor" placeholder="0"></div>
+          <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
         <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
-          <input type="number" id="qc_ideal_budget_threshold" placeholder="0"></div>
+          <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
         <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
         <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
       </div>
@@ -672,8 +699,9 @@ const MODEL = "claude-sonnet-4-6";
 
 let supabaseClient = null;
 let CONFIG = { supabase: { enabled: false } };
+let currentDmPlatform = "Instagram";
 let currentProposalLeadId = null;
-let chatHistories = { pipeline: [], inbox: [], proposal: [], followup: [] };
+let chatHistories = { pipeline: [], inbox: [], dm: [], proposal: [], followup: [] };
 let lastInboxProcessed = null;
 let dmAttachments = {};
 let genericAttachments = {};
@@ -769,6 +797,7 @@ const LeadsDB = makeTable('leads','sp_leads');
 const CommLogDB = makeTable('comm_log','sp_comm_log');
 const ProposalsDB = makeTable('proposals','sp_proposals');
 const FollowupsDB = makeTable('followups','sp_followups');
+const DmLogDB = makeTable('dm_log','sp_dm_log');
 const CallNotesDB = makeTable('call_notes','sp_call_notes');
 
 /* ===================== HUBSPOT ===================== */
@@ -1105,7 +1134,7 @@ function saveSetting(key){
   refreshConnectionSlots();
 }
 function loadSettingsIntoForm(){
-  ['anthropic_key','hubspot_key','gmail_key','mary_email','reply_name',
+  ['anthropic_key','hubspot_key','monday_key','gmail_key','mary_email','reply_name',
    'readai_key','otter_key','prospero_key',
    'supabase_url','supabase_anon_key'].forEach(k=>{
     const el = document.getElementById(k);
@@ -1116,7 +1145,7 @@ function loadSettingsIntoForm(){
   loadVoiceProfileIntoSettings();
 }
 function refreshConnectionBadges(){
-  ['anthropic_key','hubspot_key','gmail_key','readai_key','otter_key','prospero_key'].forEach(k=>{
+  ['anthropic_key','hubspot_key','monday_key','gmail_key','readai_key','otter_key','prospero_key'].forEach(k=>{
     const badge = document.getElementById('badge-'+k);
     if(!badge) return;
     const has = !!localStorage.getItem(k);
@@ -1165,6 +1194,7 @@ function renderConnStatusTable(){
   const items = [
     ['Claude AI (Anthropic)','anthropic_key'],
     ['HubSpot','hubspot_key'],
+    ['Monday.com','monday_key'],
     ['Gmail','gmail_key'],
     ['Read.ai','readai_key'],
     ['Otter.ai','otter_key'],
@@ -1212,7 +1242,8 @@ async function testSupabaseConnection(){
 const INTEGRATION_KEYS = [
   { key:'anthropic', label:'Anthropic (Claude)' },
   { key:'hubspot', label:'HubSpot' },
-  { key:'readai', label:'Read.ai' }
+  { key:'readai', label:'Read.ai' },
+  { key:'fathom', label:'Fathom' }
 ];
 function integrationsFunctionsBase(){
   const url = localStorage.getItem('supabase_url');
@@ -1389,7 +1420,7 @@ async function migrateToSupabase(){
   progress.classList.remove('hidden');
   const tables = [
     ['leads','sp_leads'],['comm_log','sp_comm_log'],['proposals','sp_proposals'],
-    ['followups','sp_followups'],['call_notes','sp_call_notes']
+    ['followups','sp_followups'],['dm_log','sp_dm_log'],['call_notes','sp_call_notes']
   ];
   let done=0;
   for(const [table,storageKey] of tables){
@@ -1818,6 +1849,7 @@ function leadRowHtml(l){
       <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
       <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
       ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
+      ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
       <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
       <button class="btn btn-sm" onclick="sendToProposal('${l.id}')">Proposal</button>
       <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
@@ -2023,10 +2055,30 @@ async function confirmBookCall(id){
   closeModal();
   await refreshPipeline();
   await syncStageToHubspot(l, 'Discovery Booked');
+  triggerMeetingPrepBrief(id);
   await openAIDraftModal(`Confirmation Email — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a discovery call confirmation email."),
     `Here is the lead context:\n${leadCtx(l)}\n\nA discovery call has just been scheduled for ${fmtDate(date)} at ${time}. Write a confirmation email that confirms the date/time, sets expectations for the call, and shows genuine enthusiasm to speak with them. Write ONLY the email, no preamble.`);
   logComm(l.id, 'book_call', `Discovery call booked for ${fmtDate(date)} ${time}`);
+}
+async function triggerMeetingPrepBrief(id){
+  const supabaseUrl = localStorage.getItem('supabase_url');
+  const anonKey = localStorage.getItem('supabase_anon_key');
+  if(!supabaseUrl || !anonKey) return; // Supabase not connected — skip silently, nothing to build the brief from server-side
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/generate-meeting-brief`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ leadId: id })
+    });
+    const data = await res.json();
+    if(res.ok && data.ok){
+      await refreshPipeline();
+      toast('Meeting-prep brief ready.','success');
+    }
+  }catch(e){
+    console.warn('Meeting-prep brief generation failed:', e);
+  }
 }
 
 /* Book Meeting — the one manual step in the async qualification funnel.
@@ -2063,6 +2115,16 @@ async function confirmBookMeeting(id){
   }catch(e){
     toast('Could not send the booking email — is the send-booking-email Edge Function deployed? ('+e.message+')','error');
   }
+}
+
+/* Meeting-prep brief — structured-only, built from questionnaire + pipeline
+   data already in the system (no external web/social research). */
+function openMeetingPrepModal(id){
+  const l = findLeadById(id);
+  openModal(`Pre-Call Brief — ${l.business_name}`, `
+    <div class="proposal-view"><p style="white-space:pre-wrap;">${escapeHtml(l.meeting_prep_brief||'')}</p></div>
+    ${l.meeting_prep_generated_at ? `<p class="muted" style="font-size:12px;margin-top:14px;">Generated ${new Date(l.meeting_prep_generated_at).toLocaleString()}.</p>` : ''}
+  `, `<button class="btn" onclick="closeModal()">Close</button>`);
 }
 
 /* View history modal */
@@ -2189,9 +2251,10 @@ function sendToProposal(id){
   toast(`Proposal Builder pre-filled for ${l.business_name}.`);
 }
 
-/* ===================== HUBSPOT SYNC (connection slots) ===================== */
+/* ===================== HUBSPOT / MONDAY SYNC (connection slots) ===================== */
 function refreshConnectionSlots(){
   document.getElementById('btnSyncHubspot').style.display = localStorage.getItem('hubspot_key') ? 'inline-flex':'none';
+  document.getElementById('btnSyncMonday').style.display = localStorage.getItem('monday_key') ? 'inline-flex':'none';
   document.getElementById('btnConnectGmail').style.display = localStorage.getItem('gmail_key') ? 'inline-flex':'none';
   document.getElementById('btnLoadReadai').style.display = localStorage.getItem('readai_key') ? 'inline-flex':'none';
   document.getElementById('btnLoadOtter').style.display = localStorage.getItem('otter_key') ? 'inline-flex':'none';
@@ -2248,6 +2311,17 @@ async function syncHubspot(){
     toast(`HubSpot sync complete — ${added} new lead${added===1?'':'s'} added, ${updated} updated.`,'success');
   }catch(e){
     toast('Could not sync HubSpot directly from the browser (likely CORS or an invalid key). In production this runs through a backend proxy.','error');
+  }
+}
+async function syncMonday(){
+  const key = localStorage.getItem('monday_key');
+  toast('Connecting to Monday.com...');
+  try{
+    const res = await fetch('https://api.monday.com/v2', { method:'POST', headers:{ Authorization:key, 'Content-Type':'application/json' }, body: JSON.stringify({query:'query { boards { name } }'}) });
+    if(!res.ok) throw new Error('Monday returned '+res.status);
+    toast('Synced cold leads from Monday.com.','success');
+  }catch(e){
+    toast('Could not sync Monday.com directly from the browser (likely CORS). In production this runs through a backend proxy.','error');
   }
 }
 
@@ -2343,6 +2417,74 @@ async function resolveRescheduleFlag(id){
   await supabaseClient.from('reschedule_flags').update({ status:'resolved' }).eq('id', id);
   toast('Marked resolved.','success');
   await renderRescheduleFlags();
+}
+
+/* ===================== DM MANAGER ===================== */
+document.getElementById('dmSubtabs').addEventListener('click', e=>{
+  const st = e.target.closest('.subtab');
+  if(!st) return;
+  currentDmPlatform = st.dataset.platform;
+  document.querySelectorAll('#dmSubtabs .subtab').forEach(t=>t.classList.toggle('active', t===st));
+  renderDmPanels();
+});
+function renderDmPanels(){
+  const wrap = document.getElementById('dmPlatformPanels');
+  wrap.innerHTML = `
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">Process a ${currentDmPlatform} DM</div>
+      <div class="form-row">
+        <textarea id="dmPasteArea" rows="6" placeholder="Paste the ${currentDmPlatform} message here..."></textarea>
+        <div class="file-upload-row">
+          <label class="upload-btn">📎 Attach file<input type="file" id="dmFileInput" style="display:none;" onchange="handleFileUpload('dmFileInput','dmPasteArea','dm')"></label>
+          <span class="attach-tag hidden" id="dmAttachTag"></span>
+        </div>
+      </div>
+      <button class="btn btn-pink" onclick="processDm()">Process with Claude</button>
+      <div id="dmResult" style="margin-top:18px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px;">${currentDmPlatform} History</div>
+      <div id="dmHistory"></div>
+      <div id="dmHistoryEmpty" class="chat-empty hidden">No ${currentDmPlatform} DMs processed yet.</div>
+    </div>
+  `;
+  renderDmHistory();
+}
+async function processDm(){
+  const raw = document.getElementById('dmPasteArea').value.trim();
+  if(!raw){ toast('Paste a DM first.','error'); return; }
+  const resultEl = document.getElementById('dmResult');
+  resultEl.innerHTML = `<div class="ai-loading">Processing DM with Claude...</div>`;
+  const key = localStorage.getItem('anthropic_key');
+  if(!key){ resultEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`; return; }
+  const result = await callClaude(
+    await buildSystemPrompt(`Task: Process an inbound ${currentDmPlatform} direct message for Social Practice.`),
+    buildUserContent(`Here is a ${currentDmPlatform} DM Mary's business received:\n\n${raw}\n\nReturn ONLY valid JSON (no markdown fences) with these keys:\n- classification (one of: Potential Lead, Existing Client, Partner, Spam)\n- summary (1-2 sentences)\n- next_action (short sentence)\n- draft_reply (a complete reply in Mary's voice, appropriate for ${currentDmPlatform} DMs — if it's a lead, gently move them toward booking a discovery call; if a client, be helpful and professional)`, 'dm')
+  );
+  if(!result.ok){ resultEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
+  let parsed;
+  try{ parsed = JSON.parse(stripJsonFence(result.text)); }
+  catch(e){ resultEl.innerHTML = `<div class="card"><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(result.text)}</pre></div>`; return; }
+  resultEl.innerHTML = `
+  <div class="card" style="background:var(--bg-secondary);">
+    <span class="badge" style="background:var(--pink-light);color:var(--pink);margin-bottom:10px;display:inline-block;">${escapeHtml(parsed.classification||'')}</span>
+    <p style="margin-bottom:10px;"><strong>Summary:</strong> ${escapeHtml(parsed.summary||'')}</p>
+    <p style="margin-bottom:10px;"><strong>Next action:</strong> ${escapeHtml(parsed.next_action||'')}</p>
+    <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Drafted Reply</label>
+    <textarea id="dmDraftReply" rows="7" style="margin-top:6px;">${escapeHtml(parsed.draft_reply||'')}</textarea>
+    <button class="btn btn-pink btn-sm" style="margin-top:10px;" onclick="copyTextareaContent('dmDraftReply')">Copy</button>
+  </div>`;
+  await DmLogDB.insert({ platform: currentDmPlatform, sender:'', message: raw, reply: parsed.draft_reply||'', processed_at: new Date().toISOString() });
+  await renderDmHistory();
+}
+async function renderDmHistory(){
+  const log = (await DmLogDB.getAll()).filter(d=>d.platform===currentDmPlatform);
+  const wrap = document.getElementById('dmHistory');
+  const empty = document.getElementById('dmHistoryEmpty');
+  if(!wrap) return;
+  if(!log.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  wrap.innerHTML = log.map(d=>`<div class="list-item"><div><div class="list-item-title">${escapeHtml((d.message||'').slice(0,60))}...</div><div class="list-item-sub">${new Date(d.processed_at).toLocaleString()}</div></div></div>`).join('');
 }
 
 /* ===================== PROPOSAL BUILDER ===================== */
@@ -2759,7 +2901,7 @@ function sendAgreementViaProspero(id){
 }
 
 /* ===================== EMBEDDED CHAT WIDGETS ===================== */
-const CHAT_LABELS = { pipeline:'Sales Pipeline', inbox:'Inbox Manager', proposal:'Proposal Builder', callnotes:'Call Notes', followup:'Follow-Up Tracker' };
+const CHAT_LABELS = { pipeline:'Sales Pipeline', inbox:'Inbox Manager', dm:'DM Manager', proposal:'Proposal Builder', callnotes:'Call Notes', followup:'Follow-Up Tracker' };
 function initChatWidgets(){
   Object.keys(CHAT_LABELS).forEach(key=>{
     document.getElementById('chat-container-'+key).innerHTML = `
@@ -2780,6 +2922,7 @@ async function buildChatContext(key){
     return `Current pipeline: ${leads.length} leads. Breakdown by stage: ${STAGES.map(s=>`${s}: ${leads.filter(l=>l.stage===s).length}`).join(', ')}. Leads: ${leads.map(l=>`${l.business_name} (${l.stage}, ${fmtMoney(l.proposal_value)}/mo)`).join('; ')}`;
   }
   if(key==='inbox') return lastInboxProcessed ? `Last processed email — category: ${lastInboxProcessed.category}, summary: ${lastInboxProcessed.sender_summary}` : 'No email processed yet in this session.';
+  if(key==='dm') return `Currently viewing ${currentDmPlatform} DMs. This tab drafts replies in Mary's voice — it is not a lead source.`;
   if(key==='proposal') return lastProposalText ? `Current proposal draft in progress for ${document.getElementById('pBusinessName').value}:\n${lastProposalText.slice(0,1500)}` : 'No proposal generated yet in this session.';
   if(key==='callnotes') return lastCallSummary ? `Last processed call — lead: ${lastCallSummary.leadName}, type: ${lastCallSummary.callType}, overview: ${lastCallSummary.call_overview}` : 'No call has been processed yet in this session.';
   if(key==='followup'){
@@ -2934,6 +3077,7 @@ async function init(){
   populateFilterOptions();
   await seedIfEmpty();
   await refreshPipeline();
+  renderDmPanels();
   await renderInboxHistory();
   await renderRescheduleFlags();
   await renderSavedProposals();

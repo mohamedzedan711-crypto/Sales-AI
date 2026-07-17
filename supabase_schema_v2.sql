@@ -56,8 +56,13 @@ create table if not exists qualification_config (
   ideal_budget_threshold numeric default 0,
   updated_at timestamptz default now()
 );
+-- Provisional starting values from Mary's VA briefing doc, NOT confirmed
+-- with her directly yet — min floor = her lowest tier ($2,000/mo), ideal
+-- threshold = the low end of her top tiers ($4,000-6,000/mo). Both are
+-- freely editable in Settings and expected to change after she screen-
+-- shares her actual process.
 insert into qualification_config (id, min_budget_floor, ideal_budget_threshold)
-  values (1, 0, 0)
+  values (1, 2000, 4000)
   on conflict (id) do nothing;
 
 alter table qualification_config enable row level security;

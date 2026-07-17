@@ -11,12 +11,14 @@ AI-powered sales operations system for Social Practice / Mary Robb
 ## Connections Available
 - Claude AI (Anthropic)
 - HubSpot
+- Monday.com (tracked alongside HubSpot — consolidating onto HubSpot alone is still an open decision Mary hasn't made yet)
 - Gmail
-- Instagram / Facebook / LinkedIn
-- Read.ai
+- Read.ai and Fathom (independent, both optional — Fathom is being introduced alongside Read.ai, not replacing it)
 - Otter.ai
 - Prospero
 - Supabase
+
+DM Manager (Instagram/Facebook/LinkedIn) works via paste-in, same as Inbox Manager — no API keys or "connections" involved. It drafts replies in Mary's voice; it is not a lead source. Leads only ever enter the pipeline through HubSpot.
 
 ## Async Qualification Funnel + Voice Profile Backend
 `index.html` and `questionnaire.html` are the frontend. The automation that

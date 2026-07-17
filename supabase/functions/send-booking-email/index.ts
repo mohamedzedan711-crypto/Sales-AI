@@ -8,6 +8,7 @@ import { callClaude } from '../_shared/claude.ts';
 import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
 import { sendGmail } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
+import { generateMeetingPrepBrief } from '../_shared/meetingPrep.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -50,7 +51,15 @@ Deno.serve(async (req) => {
       })
       .eq('id', leadId);
 
-    return new Response(JSON.stringify({ ok: true, subject, body }), {
+    // Meeting-prep brief: best-effort, doesn't block the booking email itself if it fails.
+    let brief: string | null = null;
+    try {
+      brief = await generateMeetingPrepBrief(supabaseAdmin, anthropicCred.value, leadId);
+    } catch (e) {
+      console.warn('Meeting-prep brief generation failed:', String(e));
+    }
+
+    return new Response(JSON.stringify({ ok: true, subject, body, brief }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
