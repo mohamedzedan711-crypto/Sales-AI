@@ -240,6 +240,8 @@ tr:hover td{background:var(--bg-secondary);}
 }
 .list-item-title{font-weight:700;font-size:13.5px;color:var(--navy);}
 .list-item-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.list-item-clickable{cursor:pointer;transition:border-color .15s ease,background .15s ease;}
+.list-item-clickable:hover{border-color:var(--pink);background:var(--pink-light);}
 
 /* alert banners */
 .alert-banner{padding:12px 16px;border-radius:10px;font-size:13.5px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
@@ -254,8 +256,15 @@ tr:hover td{background:var(--bg-secondary);}
 .subtab.active{color:var(--pink);border-bottom-color:var(--pink);}
 
 /* settings */
-.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-content:start;}
 .settings-section-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.settings-accordion-item{padding:0;overflow:hidden;}
+.settings-accordion-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:22px;}
+.settings-accordion-header:hover .settings-section-title{color:var(--pink);}
+.settings-accordion-header .settings-section-title{margin-bottom:0;}
+.accordion-chevron{font-size:12px;color:var(--text-muted);transition:transform .2s ease;flex-shrink:0;}
+.settings-accordion-item.open .accordion-chevron{transform:rotate(90deg);color:var(--pink);}
+.settings-accordion-body{padding:0 22px 22px;}
 .conn-table{width:100%;font-size:13.5px;}
 .conn-table td{padding:10px 8px;border-bottom:1px solid var(--border);}
 .file-upload-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
@@ -564,122 +573,172 @@ tr:hover td{background:var(--bg-secondary);}
 
   <div class="settings-grid">
     <div>
-      <div class="card">
-        <div class="settings-section-title">🤖 AI</div>
-        <div class="form-row"><label>Anthropic API Key <span id="badge-anthropic_key"></span></label>
-          <input type="password" id="anthropic_key" placeholder="sk-ant-..."></div>
-        <button class="btn btn-pink btn-sm" onclick="saveSetting('anthropic_key')">Save</button>
-      </div>
-
-      <div class="card">
-        <div class="settings-section-title">🔗 CRM</div>
-        <div class="form-row"><label>HubSpot API Key <span id="badge-hubspot_key"></span></label>
-          <input type="password" id="hubspot_key"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-sm" onclick="saveSetting('hubspot_key')">Save</button>
-          <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
+      <div class="card settings-accordion-item" id="acc-item-ai">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('ai')">
+          <div class="settings-section-title">🤖 AI</div>
+          <span class="accordion-chevron">▸</span>
         </div>
-        <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
-        <div class="form-row" style="margin-top:14px;"><label>Monday.com API Key <span id="badge-monday_key"></span></label>
-          <input type="password" id="monday_key"></div>
-        <button class="btn btn-sm" onclick="saveSetting('monday_key')">Save</button>
-        <p class="muted" style="font-size:11.5px;margin-top:10px;">⚠️ Consolidating onto HubSpot alone is still an open decision — Mary currently runs both HubSpot and Monday.com and knows they're duplicated, but that isn't settled yet. Both stay trackable here until she decides.</p>
+        <div class="settings-accordion-body hidden" id="acc-body-ai">
+          <div class="form-row"><label>Anthropic API Key <span id="badge-anthropic_key"></span></label>
+            <input type="password" id="anthropic_key" placeholder="sk-ant-..."></div>
+          <button class="btn btn-pink btn-sm" onclick="saveSetting('anthropic_key')">Save</button>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="settings-section-title">✉️ Email</div>
-        <div class="form-row"><label>Gmail API Key <span id="badge-gmail_key"></span></label>
-          <input type="password" id="gmail_key"></div>
-        <button class="btn btn-sm" onclick="saveSetting('gmail_key')">Save</button>
-        <div class="form-row" style="margin-top:14px;"><label>Mary's Email Address</label>
-          <input type="text" id="mary_email" placeholder="mary@socialpractice.co"></div>
-        <div class="form-row"><label>Default Reply Name</label>
-          <input type="text" id="reply_name" placeholder="Zane, on behalf of Mary Robb"></div>
-        <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
+      <div class="card settings-accordion-item" id="acc-item-crm">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('crm')">
+          <div class="settings-section-title">🔗 CRM</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-crm">
+          <div class="form-row"><label>HubSpot API Key <span id="badge-hubspot_key"></span></label>
+            <input type="password" id="hubspot_key"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-sm" onclick="saveSetting('hubspot_key')">Save</button>
+            <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
+          </div>
+          <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
+          <div class="form-row" style="margin-top:14px;"><label>Monday.com API Key <span id="badge-monday_key"></span></label>
+            <input type="password" id="monday_key"></div>
+          <button class="btn btn-sm" onclick="saveSetting('monday_key')">Save</button>
+          <p class="muted" style="font-size:11.5px;margin-top:10px;">⚠️ Consolidating onto HubSpot alone is still an open decision — Mary currently runs both HubSpot and Monday.com and knows they're duplicated, but that isn't settled yet. Both stay trackable here until she decides.</p>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-email">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('email')">
+          <div class="settings-section-title">✉️ Email</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-email">
+          <div class="form-row"><label>Gmail API Key <span id="badge-gmail_key"></span></label>
+            <input type="password" id="gmail_key"></div>
+          <button class="btn btn-sm" onclick="saveSetting('gmail_key')">Save</button>
+          <div class="form-row" style="margin-top:14px;"><label>Mary's Email Address</label>
+            <input type="text" id="mary_email" placeholder="mary@socialpractice.co"></div>
+          <div class="form-row"><label>Default Reply Name</label>
+            <input type="text" id="reply_name" placeholder="Zane, on behalf of Mary Robb"></div>
+          <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
+        </div>
       </div>
     </div>
 
     <div>
-      <div class="card">
-        <div class="settings-section-title">📞 Calls &amp; Proposals</div>
-        <div class="form-row"><label>Read.ai API Key <span id="badge-readai_key"></span></label><input type="password" id="readai_key" placeholder="Paste your Read.ai API key here"></div>
-        <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at read.ai</div>
-        <button class="btn btn-sm" onclick="saveSetting('readai_key')">Save</button>
-        <div class="form-row" style="margin-top:14px;"><label>Prospero API Key <span id="badge-prospero_key"></span></label><input type="password" id="prospero_key"></div>
-        <button class="btn btn-sm" onclick="saveSetting('prospero_key')">Save</button>
-      </div>
-
-      <div class="card">
-        <div class="settings-section-title">📱 Phone Calls</div>
-        <div class="form-row"><label>Otter.ai API Key <span id="badge-otter_key"></span></label><input type="password" id="otter_key"></div>
-        <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at otter.ai/api</div>
-        <button class="btn btn-sm" onclick="saveSetting('otter_key')">Save</button>
-      </div>
-
-      <div class="card">
-        <div class="settings-section-title">🗄️ Database</div>
-        <div class="form-row"><label>Supabase Project URL</label><input type="text" id="supabase_url" placeholder="https://xxxx.supabase.co"></div>
-        <div class="form-row"><label>Supabase Anon Key</label><input type="password" id="supabase_anon_key"></div>
-        <div class="form-row" style="display:flex;align-items:center;gap:10px;">
-          <label style="margin:0;">Enable Supabase</label>
-          <input type="checkbox" id="supabase_enabled" style="width:auto;" onchange="toggleSupabaseEnabled()">
-          <span id="supabaseStatusBadge"></span>
+      <div class="card settings-accordion-item" id="acc-item-calls">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('calls')">
+          <div class="settings-section-title">📞 Calls &amp; Proposals</div>
+          <span class="accordion-chevron">▸</span>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-          <button class="btn btn-sm" onclick="saveSupabaseSettings()">Save</button>
-          <button class="btn btn-sm" onclick="testSupabaseConnection()">Test Connection</button>
-          <button class="btn btn-navy btn-sm" onclick="migrateToSupabase()">Migrate to Supabase</button>
+        <div class="settings-accordion-body hidden" id="acc-body-calls">
+          <div class="form-row"><label>Read.ai API Key <span id="badge-readai_key"></span></label><input type="password" id="readai_key" placeholder="Paste your Read.ai API key here"></div>
+          <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at read.ai</div>
+          <button class="btn btn-sm" onclick="saveSetting('readai_key')">Save</button>
+          <div class="form-row" style="margin-top:14px;"><label>Prospero API Key <span id="badge-prospero_key"></span></label><input type="password" id="prospero_key"></div>
+          <button class="btn btn-sm" onclick="saveSetting('prospero_key')">Save</button>
         </div>
-        <div id="migrateProgress" class="hidden" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
       </div>
 
-      <div class="card">
-        <div class="settings-section-title">🔌 Integrations (Backend Automation)</div>
-        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">These power the async qualification funnel running in Supabase Edge Functions — separate from the API keys elsewhere on this page, which power this app's own in-browser features. Each one goes live the moment you save it here, no redeploy needed.</p>
-        <div class="form-row"><label>Admin Password</label>
-          <input type="password" id="integrationsAdminPassword" placeholder="Set once via the ADMIN_PANEL_PASSWORD secret"></div>
-        <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
-        <div id="integrationRows"></div>
-        <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <div class="settings-section-title">🎯 Qualification Thresholds</div>
-        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
-        <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
-          <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
-        <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
-          <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
-        <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
-        <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
-        <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
-        <div id="voiceSamplesList"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-          <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
-          <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
+      <div class="card settings-accordion-item" id="acc-item-phone">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('phone')">
+          <div class="settings-section-title">📱 Phone Calls</div>
+          <span class="accordion-chevron">▸</span>
         </div>
-        <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
-
-        <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
-        <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
-        <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
-        <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
-        <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
-        <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
-        <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
-        <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
-
-        <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
-        <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        <div class="settings-accordion-body hidden" id="acc-body-phone">
+          <div class="form-row"><label>Otter.ai API Key <span id="badge-otter_key"></span></label><input type="password" id="otter_key"></div>
+          <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at otter.ai/api</div>
+          <button class="btn btn-sm" onclick="saveSetting('otter_key')">Save</button>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="settings-section-title">📊 Connection Status</div>
-        <table class="conn-table" id="connStatusTable"></table>
+      <div class="card settings-accordion-item" id="acc-item-database">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('database')">
+          <div class="settings-section-title">🗄️ Database</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-database">
+          <div class="form-row"><label>Supabase Project URL</label><input type="text" id="supabase_url" placeholder="https://xxxx.supabase.co"></div>
+          <div class="form-row"><label>Supabase Anon Key</label><input type="password" id="supabase_anon_key"></div>
+          <div class="form-row" style="display:flex;align-items:center;gap:10px;">
+            <label style="margin:0;">Enable Supabase</label>
+            <input type="checkbox" id="supabase_enabled" style="width:auto;" onchange="toggleSupabaseEnabled()">
+            <span id="supabaseStatusBadge"></span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn btn-sm" onclick="saveSupabaseSettings()">Save</button>
+            <button class="btn btn-sm" onclick="testSupabaseConnection()">Test Connection</button>
+            <button class="btn btn-navy btn-sm" onclick="migrateToSupabase()">Migrate to Supabase</button>
+          </div>
+          <div id="migrateProgress" class="hidden" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-integrations">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('integrations')">
+          <div class="settings-section-title">🔌 Integrations (Backend Automation)</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-integrations">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">These power the async qualification funnel running in Supabase Edge Functions — separate from the API keys elsewhere on this page, which power this app's own in-browser features. Each one goes live the moment you save it here, no redeploy needed.</p>
+          <div class="form-row"><label>Admin Password</label>
+            <input type="password" id="integrationsAdminPassword" placeholder="Set once via the ADMIN_PANEL_PASSWORD secret"></div>
+          <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
+          <div id="integrationRows"></div>
+          <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-qualification">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('qualification')">
+          <div class="settings-section-title">🎯 Qualification Thresholds</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-qualification">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
+          <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
+            <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
+          <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
+            <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
+          <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
+          <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-voice">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('voice')">
+          <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-voice">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
+          <div id="voiceSamplesList"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
+            <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
+          </div>
+          <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
+
+          <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
+          <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
+          <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
+          <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
+          <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
+          <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
+          <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
+          <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
+
+          <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
+          <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-connstatus">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('connstatus')">
+          <div class="settings-section-title">📊 Connection Status</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-connstatus">
+          <table class="conn-table" id="connStatusTable"></table>
+        </div>
       </div>
     </div>
   </div>
@@ -1125,6 +1184,22 @@ async function loadVoiceProfileIntoSettings(){
 }
 
 /* ===================== SETTINGS ===================== */
+/* Exclusive accordion — only one section's body visible at a time, all
+   collapsed by default. This toggles display via a CSS class only, never
+   touches the input elements themselves, so any unsaved typing inside a
+   section survives collapsing/expanding (and switching sections) intact. */
+function toggleSettingsAccordion(key){
+  const body = document.getElementById('acc-body-'+key);
+  if(!body) return;
+  const wasOpen = !body.classList.contains('hidden');
+  document.querySelectorAll('.settings-accordion-body').forEach(b=>b.classList.add('hidden'));
+  document.querySelectorAll('.settings-accordion-item').forEach(i=>i.classList.remove('open'));
+  if(!wasOpen){
+    body.classList.remove('hidden');
+    const item = document.getElementById('acc-item-'+key);
+    if(item) item.classList.add('open');
+  }
+}
 function saveSetting(key){
   const el = document.getElementById(key);
   if(!el) return;
@@ -2377,8 +2452,25 @@ async function renderInboxHistory(){
   empty.classList.add('hidden');
   wrap.innerHTML = log.map(c=>{
     let parsed={}; try{ parsed = JSON.parse(c.content); }catch(e){}
-    return `<div class="list-item"><div><div class="list-item-title">${escapeHtml(c.subject||'Email')}</div><div class="list-item-sub">${escapeHtml((parsed.sender_summary||'').slice(0,90))} · ${new Date(c.sent_at).toLocaleString()}</div></div></div>`;
+    return `<div class="list-item list-item-clickable" onclick="openInboxHistoryModal('${c.id}')"><div><div class="list-item-title">${escapeHtml(c.subject||'Email')}</div><div class="list-item-sub">${escapeHtml((parsed.sender_summary||'').slice(0,90))} · ${new Date(c.sent_at).toLocaleString()}</div></div></div>`;
   }).join('');
+}
+async function openInboxHistoryModal(id){
+  const log = await CommLogDB.getAll();
+  const c = log.find(x=>x.id===id);
+  if(!c) return;
+  let parsed = {};
+  try{ parsed = JSON.parse(c.content); }catch(e){}
+  openModal(`Processed Email — ${escapeHtml(c.subject||'Email')}`, `
+    <div class="section-label">Original Message</div>
+    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;"><p style="white-space:pre-wrap;font-size:13.5px;">${escapeHtml(parsed.original||'Not available.')}</p></div>
+    ${parsed.sender_summary ? `<p style="margin-bottom:10px;"><strong>Summary:</strong> ${escapeHtml(parsed.sender_summary)}</p>` : ''}
+    ${parsed.suggested_action ? `<p style="margin-bottom:10px;"><strong>Suggested action:</strong> ${escapeHtml(parsed.suggested_action)}</p>` : ''}
+    ${(parsed.clarifying_questions && parsed.clarifying_questions.length) ? `<p style="margin-bottom:10px;"><strong>Clarifying questions:</strong></p><ul style="margin:0 0 10px 20px;">${parsed.clarifying_questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ul>` : ''}
+    <div class="section-label">Drafted Reply</div>
+    <textarea id="inboxHistoryModalReply" rows="8" readonly>${escapeHtml(parsed.draft_reply||'')}</textarea>
+    <p class="muted" style="font-size:12px;margin-top:14px;">${escapeHtml(c.subject||'')} · ${new Date(c.sent_at).toLocaleString()}</p>
+  `, `<button class="btn btn-secondary" onclick="copyTextareaContent('inboxHistoryModalReply')">Copy Reply</button><button class="btn" onclick="closeModal()">Close</button>`);
 }
 
 /* Reschedule requests — surfaced here by the check-booking-replies Edge Function.
@@ -2484,7 +2576,19 @@ async function renderDmHistory(){
   if(!wrap) return;
   if(!log.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
   empty.classList.add('hidden');
-  wrap.innerHTML = log.map(d=>`<div class="list-item"><div><div class="list-item-title">${escapeHtml((d.message||'').slice(0,60))}...</div><div class="list-item-sub">${new Date(d.processed_at).toLocaleString()}</div></div></div>`).join('');
+  wrap.innerHTML = log.map(d=>`<div class="list-item list-item-clickable" onclick="openDmHistoryModal('${d.id}')"><div><div class="list-item-title">${escapeHtml((d.message||'').slice(0,60))}...</div><div class="list-item-sub">${new Date(d.processed_at).toLocaleString()}</div></div></div>`).join('');
+}
+async function openDmHistoryModal(id){
+  const log = await DmLogDB.getAll();
+  const d = log.find(x=>x.id===id);
+  if(!d) return;
+  openModal(`${escapeHtml(d.platform||'DM')} Message`, `
+    <div class="section-label">Original Message</div>
+    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;"><p style="white-space:pre-wrap;font-size:13.5px;">${escapeHtml(d.message||'Not available.')}</p></div>
+    <div class="section-label">Drafted Reply</div>
+    <textarea id="dmHistoryModalReply" rows="8" readonly>${escapeHtml(d.reply||'')}</textarea>
+    <p class="muted" style="font-size:12px;margin-top:14px;">${escapeHtml(d.platform||'')}${d.sender?' · '+escapeHtml(d.sender):''} · ${new Date(d.processed_at).toLocaleString()}</p>
+  `, `<button class="btn btn-secondary" onclick="copyTextareaContent('dmHistoryModalReply')">Copy Reply</button><button class="btn" onclick="closeModal()">Close</button>`);
 }
 
 /* ===================== PROPOSAL BUILDER ===================== */
