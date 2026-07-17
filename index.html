@@ -1532,17 +1532,20 @@ Never does: ${(profile.never_does||[]).join('; ') || 'n/a'}`;
 }
 async function buildSystemPrompt(roleInstructions){
   const voiceBlock = await getVoiceProfileBlock();
-  return `You are an AI assistant embedded in the Sales Engine used by Mary Robb, founder of Social Practice — a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
+  return `You are an AI assistant embedded in the Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
 
-Write this in Mary's voice using the profile below — match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
+Write this in Mary's voice using the profile below. Match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
 ${voiceBlock}
 
 ${roleInstructions || ''}
 
 Rules:
 - Never write generic, placeholder, or templated content. Always be specific to the exact context and details given.
-- Never use bracket placeholders like [Name] or [Business] — use the real details provided.
-- Write like a real person, not a robot.`;
+- Never use bracket placeholders like [Name] or [Business]. Use the real details provided.
+- Write like a real person, not a robot.
+- Never use em dashes (—) or en dashes used as sentence connectors. Use periods, commas, or "and"/"but" instead.
+- Avoid other AI-sounding patterns: no "I hope this finds you well," no triple-adjective lists, no overly symmetric sentence structures, no starting multiple sentences in a row with the same word.
+- Write the way a busy, real person actually types, with a slightly imperfect rhythm, varied sentence length, and nothing that reads like polished editorial copy.`;
 }
 
 async function callClaude(systemPrompt, userContent, opts={}){
@@ -1572,10 +1575,29 @@ async function callClaude(systemPrompt, userContent, opts={}){
       return { ok:false, message: (data.error && data.error.message) || 'Claude request failed.' };
     }
     const text = (data.content || []).map(c=>c.text || '').join('\n').trim();
-    return { ok:true, text };
+    return { ok:true, text: stripAiDashes(text) };
   }catch(e){
     return { ok:false, message: 'Could not reach Claude directly from the browser (' + e.message + '). In production this call would route through a backend proxy.' };
   }
+}
+
+// Belt-and-suspenders safety net: prompting alone doesn't guarantee Claude
+// never slips an em dash in, so every response gets swept here too. Only
+// touches em dashes and SPACED en dashes (a connector, e.g. "world — but")
+// — a tight en dash with no surrounding spaces (a number range, e.g.
+// "$1,000–$2,500/mo") is left alone. Not grammar-aware on purpose: picks
+// a period before a capital letter, a comma otherwise.
+function stripAiDashes(text){
+  if(!text) return text;
+  const replaceConnector = (match, offset, str) => {
+    const after = str.slice(offset + match.length).trimStart();
+    return /^[A-Z]/.test(after) ? '. ' : ', ';
+  };
+  return text
+    .replace(/\s*—\s*/g, replaceConnector)
+    .replace(/\s+–\s+/g, replaceConnector)
+    .replace(/ {2,}/g, ' ')
+    .trim();
 }
 
 function stripJsonFence(text){
