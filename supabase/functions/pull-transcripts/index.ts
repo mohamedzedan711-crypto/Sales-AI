@@ -28,6 +28,7 @@ import { getCredential } from '../_shared/credentials.ts';
 import { callClaude, stripJsonFence } from '../_shared/claude.ts';
 import { createHubspotNote } from '../_shared/hubspot.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 interface NormalizedSession {
   source: 'readai' | 'fathom';
@@ -124,11 +125,17 @@ Deno.serve(async (req) => {
 
     if (readaiCred) {
       try { sessions.push(...(await fetchReadaiSessions(readaiCred.value))); }
-      catch (e) { sourceErrors.push('Read.ai: ' + String(e)); }
+      catch (e) {
+        sourceErrors.push('Read.ai: ' + String(e));
+        await logAutomationFailure(supabaseAdmin, 'pull-transcripts', 'Read.ai fetch failed: ' + String(e));
+      }
     }
     if (fathomCred) {
       try { sessions.push(...(await fetchFathomCalls(fathomCred.value))); }
-      catch (e) { sourceErrors.push('Fathom: ' + String(e)); }
+      catch (e) {
+        sourceErrors.push('Fathom: ' + String(e));
+        await logAutomationFailure(supabaseAdmin, 'pull-transcripts', 'Fathom fetch failed: ' + String(e));
+      }
     }
 
     let appended = 0;
@@ -146,6 +153,11 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!lead) {
         skipped.push(session.attendeeEmail);
+        await logAutomationFailure(
+          supabaseAdmin,
+          'pull-transcripts',
+          `No lead found matching attendee email "${session.attendeeEmail}" (${session.source} session ${session.id}) — transcript was not saved anywhere. Check the lead's email on file, or whether the attendee list put someone other than the prospect first.`
+        );
         continue;
       }
 
@@ -175,6 +187,12 @@ Deno.serve(async (req) => {
           hubspotNotesPushed++;
         } catch (e) {
           hubspotErrors.push(`${lead.business_name}: ${String(e)}`);
+          await logAutomationFailure(
+            supabaseAdmin,
+            'pull-transcripts',
+            `Call transcript was saved, but pushing the note to HubSpot failed: ${String(e)}`,
+            lead.id
+          );
         }
       }
     }
@@ -183,6 +201,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    try { await logAutomationFailure(getSupabaseAdmin(), 'pull-transcripts', `Run failed entirely: ${String(e)}`); } catch { /* logging itself failed, nothing more to do */ }
     return new Response(JSON.stringify({ ok: false, error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

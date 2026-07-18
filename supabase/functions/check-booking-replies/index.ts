@@ -9,6 +9,7 @@ import { listGmailReplies } from '../_shared/gmail.ts';
 import { callClaude, stripJsonFence } from '../_shared/claude.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 function decodeBody(payload: any): string {
   const part = payload?.parts?.find((p: any) => p.mimeType === 'text/plain') || payload;
@@ -57,6 +58,12 @@ Deno.serve(async (req) => {
       try {
         parsed = JSON.parse(stripJsonFence(result));
       } catch {
+        await logAutomationFailure(
+          supabaseAdmin,
+          'check-booking-replies',
+          `Could not parse Claude's classification of a reply from ${lead.email} — reply was left unhandled, needs a manual look.`,
+          lead.id
+        );
         continue;
       }
 
@@ -82,6 +89,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    try { await logAutomationFailure(getSupabaseAdmin(), 'check-booking-replies', `Run failed entirely: ${String(e)}`); } catch { /* logging itself failed, nothing more to do */ }
     return new Response(JSON.stringify({ ok: false, error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

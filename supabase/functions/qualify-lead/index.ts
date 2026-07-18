@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { callClaude, stripJsonFence } from '../_shared/claude.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 function parseBudget(band: string | null | undefined): number | null {
   if (!band) return null;
@@ -65,6 +66,12 @@ Return ONLY valid JSON, no markdown fences, with exactly these keys: qualified (
       parsed = JSON.parse(stripJsonFence(claudeText));
     } catch {
       parsed = { qualified: false, score: 0, priority: false, reason: 'Could not parse qualification result.' };
+      await logAutomationFailure(
+        supabaseAdmin,
+        'qualify-lead',
+        `Claude did not return valid JSON for this lead's qualification — scored 0/not-qualified as a safe default instead of guessing. Worth a manual re-check.`,
+        lead.id
+      );
     }
 
     // Deterministic hard-rule enforcement (source of truth: qualification_config).
@@ -99,6 +106,7 @@ Return ONLY valid JSON, no markdown fences, with exactly these keys: qualified (
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    try { await logAutomationFailure(getSupabaseAdmin(), 'qualify-lead', `Run failed entirely (lead was not scored): ${String(e)}`); } catch { /* logging itself failed, nothing more to do */ }
     return new Response(JSON.stringify({ ok: false, error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

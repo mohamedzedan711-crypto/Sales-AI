@@ -8,6 +8,7 @@ import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
 import { sendGmail } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
 
       if (insertError || !inserted) {
         errors.push(`insert failed for ${email}: ${insertError?.message}`);
+        await logAutomationFailure(supabaseAdmin, 'sync-hubspot-leads', `Could not create lead for HubSpot contact ${email}: ${insertError?.message}`);
         continue;
       }
 
@@ -89,6 +91,12 @@ Deno.serve(async (req) => {
         created++;
       } catch (mailErr) {
         errors.push(`email failed for ${email}: ${String(mailErr)}`);
+        await logAutomationFailure(
+          supabaseAdmin,
+          'sync-hubspot-leads',
+          `Lead was created from HubSpot, but the questionnaire email failed to send: ${String(mailErr)}`,
+          inserted.id
+        );
       }
     }
 
@@ -96,6 +104,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    try { await logAutomationFailure(getSupabaseAdmin(), 'sync-hubspot-leads', `Run failed entirely: ${String(e)}`); } catch { /* logging itself failed, nothing more to do */ }
     return new Response(JSON.stringify({ ok: false, error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

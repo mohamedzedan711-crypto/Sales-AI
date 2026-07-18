@@ -232,6 +232,23 @@ tr:hover td{background:var(--bg-secondary);}
 .proposal-view li{margin-bottom:5px;}
 .proposal-view strong{color:var(--navy);}
 
+/* Proposal Builder output — sectioned, independently collapsible cards
+   (each section toggles on its own, unlike the exclusive Settings
+   accordion, since this is one document read top-to-bottom). */
+.proposal-sections{font-size:14px;line-height:1.7;}
+.proposal-section-item{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;background:var(--bg-secondary);}
+.proposal-section-header{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;padding:13px 16px;}
+.proposal-section-header:hover{background:var(--pink-light);}
+.proposal-section-chevron{font-size:11px;color:var(--text-muted);transition:transform .2s ease;flex-shrink:0;}
+.proposal-section-item.collapsed .proposal-section-chevron{transform:rotate(-90deg);}
+.proposal-section-title{flex:1;font-weight:700;font-size:14px;color:var(--navy);}
+.proposal-section-body{padding:2px 16px 16px;}
+.proposal-section-item.collapsed .proposal-section-body{display:none;}
+.proposal-section-body p{margin-bottom:10px;}
+.proposal-section-body ul{margin:8px 0 12px 20px;}
+.proposal-section-body li{margin-bottom:5px;}
+.proposal-section-body strong{color:var(--navy);}
+
 /* saved list items */
 .list-item{
   display:flex;align-items:center;justify-content:space-between;padding:13px 16px;
@@ -496,6 +513,7 @@ tr:hover td{background:var(--bg-secondary);}
 <section class="tab-content" id="tab-callnotes">
   <h1 class="page-title">Call Notes</h1>
   <p class="page-sub">Take live notes during a call and let Claude turn them into a structured summary.</p>
+  <p class="muted" style="font-size:12px;margin-top:-10px;margin-bottom:18px;">Use this if a call wasn't recorded automatically, or as a backup during setup — once Read.ai/Fathom and HubSpot are connected, call notes get pulled and logged to HubSpot on their own.</p>
 
   <div class="two-col">
     <div class="card">
@@ -621,6 +639,50 @@ tr:hover td{background:var(--bg-secondary);}
           <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
         </div>
       </div>
+
+      <div class="card settings-accordion-item" id="acc-item-qualification">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('qualification')">
+          <div class="settings-section-title">🎯 Qualification Thresholds</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-qualification">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
+          <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
+            <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
+          <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
+            <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
+          <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
+          <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card settings-accordion-item" id="acc-item-voice">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('voice')">
+          <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-voice">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
+          <div id="voiceSamplesList"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
+            <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
+          </div>
+          <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
+
+          <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
+          <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
+          <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
+          <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
+          <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
+          <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
+          <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
+          <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
+
+          <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
+          <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+        </div>
+      </div>
     </div>
 
     <div>
@@ -684,50 +746,13 @@ tr:hover td{background:var(--bg-secondary);}
           <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
           <div id="integrationRows"></div>
           <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-        </div>
-      </div>
 
-      <div class="card settings-accordion-item" id="acc-item-qualification">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('qualification')">
-          <div class="settings-section-title">🎯 Qualification Thresholds</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-qualification">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
-          <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
-            <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
-          <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
-            <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
-          <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
-          <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-        </div>
-      </div>
-
-      <div class="card settings-accordion-item" id="acc-item-voice">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('voice')">
-          <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-voice">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
-          <div id="voiceSamplesList"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-            <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
-            <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+            <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Automation Activity</div>
+            <p class="muted" style="font-size:11.5px;margin-bottom:10px;">Anything the automations above couldn't finish on their own (a missed HubSpot match, an expired key, a failed send) shows up here instead of silently failing — check back after connecting everything for the first time.</p>
+            <div id="automationFailuresList"></div>
+            <div id="automationFailuresEmpty" class="chat-empty">No automation issues right now.</div>
           </div>
-          <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
-
-          <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
-          <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
-          <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
-          <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
-          <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
-          <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
-          <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
-          <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
-
-          <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
-          <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
         </div>
       </div>
 
@@ -825,6 +850,7 @@ function makeTable(tableName, storageKey){
       if(supabaseClient){
         const { data, error } = await supabaseClient.from(tableName).insert([record]).select();
         if(!error) return data[0];
+        console.warn(`Supabase insert into "${tableName}" failed, falling back to localStorage only: ${error.message}`);
       }
       const rows = JSON.parse(localStorage.getItem(storageKey) || '[]');
       rows.unshift(record);
@@ -1300,6 +1326,7 @@ function saveSupabaseSettings(){
   loadQualificationConfig();
   renderRescheduleFlags();
   loadIntegrationsStatus();
+  renderAutomationFailures();
 }
 function toggleSupabaseEnabled(){ saveSupabaseSettings(); }
 async function testSupabaseConnection(){
@@ -1386,6 +1413,45 @@ async function loadIntegrationsStatus(){
     renderIntegrationRows(null);
     if(statusEl) statusEl.textContent = 'Could not load integration status — is get-credentials-status deployed? ('+e.message+')';
   }
+}
+/* Surfaces failures logged by the cron/webhook-invoked backend functions
+   (sync-hubspot-leads, pull-transcripts, check-booking-replies, qualify-lead)
+   — those run unattended and nobody reads their HTTP response, so without
+   this a real problem would only ever show up in Supabase's own function
+   logs. See supabase_schema_v5.sql / _shared/automationLog.ts. */
+async function renderAutomationFailures(){
+  const wrap = document.getElementById('automationFailuresList');
+  const empty = document.getElementById('automationFailuresEmpty');
+  if(!wrap) return;
+  if(!supabaseClient){
+    wrap.innerHTML = '';
+    empty.textContent = 'Connect Supabase above to see automation issues here.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from('automation_failures')
+    .select('*, leads(business_name)')
+    .eq('resolved', false)
+    .order('occurred_at', { ascending: false })
+    .limit(20);
+  if(error || !data || !data.length){
+    wrap.innerHTML = '';
+    empty.textContent = 'No automation issues right now.';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  wrap.innerHTML = data.map(f=>`
+    <div class="list-item">
+      <div><div class="list-item-title">${escapeHtml(f.automation)}${f.leads?.business_name ? ' — '+escapeHtml(f.leads.business_name) : ''}</div><div class="list-item-sub">${escapeHtml(f.detail)}</div></div>
+      <button class="btn btn-sm" onclick="dismissAutomationFailure('${f.id}')">Dismiss</button>
+    </div>`).join('');
+}
+async function dismissAutomationFailure(id){
+  if(!supabaseClient) return;
+  await supabaseClient.from('automation_failures').update({ resolved:true }).eq('id', id);
+  await renderAutomationFailures();
 }
 async function saveIntegrationKey(key){
   const base = integrationsFunctionsBase();
@@ -1808,7 +1874,7 @@ function switchTab(name){
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='callnotes') initCallNotesTab();
   if(name==='inbox') renderRescheduleFlags();
-  if(name==='settings'){ loadQualificationConfig(); loadIntegrationsStatus(); }
+  if(name==='settings'){ loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures(); }
 }
 
 /* ===================== SEED DATA ===================== */
@@ -2653,6 +2719,67 @@ function proposalMarkdownToHtml(md){
   if(inList) html+='</ul>';
   return html;
 }
+/* Presentation-only: splits the same generated markdown into per-##-header
+   collapsible cards instead of one long scroll. Doesn't touch what content
+   gets generated — proposalMarkdownToHtml above is kept as the fallback for
+   text with no clear section headers. */
+let proposalSectionRawMap = {};
+function parseProposalSections(md){
+  const lines = md.split('\n');
+  const sections = [];
+  let current = null;
+  for(const rawLine of lines){
+    const line = rawLine.trim();
+    if(/^#{1,3}\s/.test(line)){
+      if(current) sections.push(current);
+      current = { title: line.replace(/^#{1,3}\s/,''), body: '' };
+    } else {
+      if(!current) current = { title: '', body: '' };
+      current.body += rawLine + '\n';
+    }
+  }
+  if(current) sections.push(current);
+  return sections.filter(s=>s.title || s.body.trim());
+}
+function proposalSectionBodyToHtml(body){
+  const lines = body.split('\n');
+  let html='', inList=false;
+  for(let line of lines){
+    line = line.trim();
+    if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
+    if(/^[-*]\s/.test(line)){ if(!inList){html+='<ul>';inList=true;} html += `<li>${inlineMd(line.replace(/^[-*]\s/,''))}</li>`; continue; }
+    if(inList){ html+='</ul>'; inList=false; }
+    html += `<p>${inlineMd(line)}</p>`;
+  }
+  if(inList) html+='</ul>';
+  return html;
+}
+function renderSectionedProposal(md, idPrefix){
+  const sections = parseProposalSections(md);
+  if(sections.length <= 1) return `<div class="proposal-view">${proposalMarkdownToHtml(md)}</div>`;
+  return `<div class="proposal-sections">` + sections.map((s,i)=>{
+    const secId = `${idPrefix}-${i}`;
+    proposalSectionRawMap[secId] = (s.title ? `## ${s.title}\n` : '') + s.body.trim();
+    return `
+    <div class="proposal-section-item" id="${secId}">
+      <div class="proposal-section-header" onclick="toggleProposalSection('${secId}')">
+        <span class="proposal-section-chevron">▾</span>
+        <div class="proposal-section-title">${escapeHtml(s.title || 'Overview')}</div>
+        <button class="btn btn-sm" onclick="event.stopPropagation();copyProposalSection('${secId}')">Copy</button>
+      </div>
+      <div class="proposal-section-body">${proposalSectionBodyToHtml(s.body)}</div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+function toggleProposalSection(secId){
+  const item = document.getElementById(secId);
+  if(item) item.classList.toggle('collapsed');
+}
+function copyProposalSection(secId){
+  const text = proposalSectionRawMap[secId] || '';
+  if(!text){ toast('Nothing to copy.','error'); return; }
+  navigator.clipboard.writeText(text).then(()=>toast('Section copied.','success'));
+}
 function inlineMd(s){ return escapeHtml(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }
 let lastProposalText = '';
 async function generateProposal(){
@@ -2679,7 +2806,7 @@ Raw Discovery Notes: ${document.getElementById('proposalNotes').value}`;
   );
   if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
   lastProposalText = result.text;
-  outEl.innerHTML = proposalMarkdownToHtml(result.text);
+  outEl.innerHTML = renderSectionedProposal(result.text, 'proposalSec');
   document.getElementById('proposalSaveRow').classList.remove('hidden');
 }
 function copyProposal(){
@@ -2697,7 +2824,7 @@ async function generateCanvaBrief(){
     `Here is a written proposal:\n\n${lastProposalText}\n\nWrite a Canva design brief for turning this into a visual proposal deck: recommend slide count and structure, per-slide content summary, suggested color palette (Social Practice brand: deep navy #1a1a2e and hot pink #e91e8c, clean/modern, medical aesthetics industry appropriate), font pairing suggestions, and imagery direction. Use ## markdown headers.`
   );
   if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  outEl.innerHTML = proposalMarkdownToHtml(result.text);
+  outEl.innerHTML = renderSectionedProposal(result.text, 'canvaSec');
 }
 async function saveProposal(){
   if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
@@ -2737,7 +2864,12 @@ async function renderSavedProposals(){
 }
 async function viewSavedProposal(id){
   const p = (await ProposalsDB.getAll()).find(x=>x.id===id);
-  openModal(p.business_name||'Proposal', `<div class="proposal-view">${proposalMarkdownToHtml(p.content)}</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
+  lastProposalText = p.content;
+  openModal(
+    p.business_name||'Proposal',
+    renderSectionedProposal(p.content, 'savedProp-'+id),
+    `<button class="btn" onclick="closeModal()">Close</button><button class="btn btn-navy" onclick="copyProposal()">Copy Full Proposal</button>`
+  );
 }
 async function loadFromReadai(){
   const key = localStorage.getItem('readai_key');

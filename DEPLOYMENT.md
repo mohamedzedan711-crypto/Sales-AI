@@ -34,7 +34,11 @@ Anthropic, HubSpot, Read.ai, and Fathom accounts/keys are **not** needed at depl
 
 ## 1. Apply the schema
 
-In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`. All four are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`).
+In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`. All six are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`).
+
+`supabase_schema_v5.sql` adds `automation_failures`, used by the four unattended backend functions (`sync-hubspot-leads`, `pull-transcripts`, `check-booking-replies`, `qualify-lead`) to log anything they couldn't complete on their own. Surfaced in Settings → Integrations → Automation Activity — see the note under step 6 below.
+
+`supabase_schema_v6.sql` adds a missing `business_name` column to `proposals` — without it, Save Proposal in Proposal Builder would fail against a connected Supabase project and silently fall back to browser-only storage, so saved proposals never appeared. If you already ran `supabase_schema.sql` before this fix, this migration is what makes Save Proposal actually persist.
 
 `supabase_schema_v2.sql`'s `qualification_config` seed row now defaults to a $2,000 floor / $4,000 priority threshold — provisional numbers from Mary's brief, not confirmed with her directly yet. Both remain freely editable in Settings → Qualification Thresholds.
 
@@ -146,7 +150,7 @@ select cron.schedule(
 );
 ```
 
-If `current_setting('app.settings.service_role_key')` isn't populated in your project, paste the service role key directly into the header instead (Project Settings → API → service_role key) — treat it the same as any other secret. Note these scheduled functions will fail gracefully (clear "not connected" error, visible in the function's logs) until the corresponding keys are added through the app — that's expected until step 7 below is done.
+If `current_setting('app.settings.service_role_key')` isn't populated in your project, paste the service role key directly into the header instead (Project Settings → API → service_role key) — treat it the same as any other secret. Note these scheduled functions will fail gracefully (clear "not connected" error) until the corresponding keys are added through the app — that's expected until step 7 below is done. Since a cron-invoked function's response is never read by anyone, that failure (and any other issue one of these functions hits mid-run, like a transcript it couldn't match to a lead or a HubSpot note push that failed) is also written to `automation_failures` and shown in Settings → Integrations → **Automation Activity**, so it's never just sitting in the function logs unnoticed.
 
 Monday.com has no Edge Function or cron entry — it's a client-side-only connection (Settings → CRM → Monday.com API Key, same pattern as the old Instagram/Facebook/LinkedIn keys before those existed as real integrations), used by the manual "Sync Monday" button in the Sales Pipeline tab. Mary currently runs both HubSpot and Monday.com and knows they're duplicated; consolidating onto HubSpot alone is still an open decision, not settled — this build keeps both trackable without forcing that choice.
 
