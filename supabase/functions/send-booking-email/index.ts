@@ -6,7 +6,7 @@
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { callClaude } from '../_shared/claude.ts';
 import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
-import { sendGmail } from '../_shared/gmail.ts';
+import { sendGmail, textToHtmlBody } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { generateMeetingPrepBrief } from '../_shared/meetingPrep.ts';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const subject = subjectMatch ? subjectMatch[1].trim() : "Let's find time to talk";
     const body = draft.replace(/^Subject:.*$/mi, '').trim();
 
-    await sendGmail(gmailCred.value, gmailCred.meta.email, lead.email, subject, body);
+    await sendGmail(gmailCred.value, gmailCred.meta.email, lead.email, subject, textToHtmlBody(body));
 
     await supabaseAdmin
       .from('leads')

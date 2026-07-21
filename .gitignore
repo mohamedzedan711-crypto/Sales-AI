@@ -1,3 +1,12 @@
 .env
 node_modules/
 .DS_Store
+
+.vercel
+
+# Supabase CLI local link/version cache — machine-specific, not source
+supabase/.temp/
+
+# Never commit this specific file, or similarly-named API key exports
+Claude API Key.txt
+*API*Key*.txt

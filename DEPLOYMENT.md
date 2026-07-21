@@ -36,7 +36,7 @@ Anthropic, HubSpot, Read.ai, and Fathom accounts/keys are **not** needed at depl
 
 In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`. All six are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`).
 
-`supabase_schema_v5.sql` adds `automation_failures`, used by the four unattended backend functions (`sync-hubspot-leads`, `pull-transcripts`, `check-booking-replies`, `qualify-lead`) to log anything they couldn't complete on their own. Surfaced in Settings → Integrations → Automation Activity — see the note under step 6 below.
+`supabase_schema_v5.sql` adds `automation_failures`, used by the unattended backend functions (`sync-hubspot-leads`, `pull-transcripts`, `check-booking-replies`, `qualify-lead`, `send-questionnaire-email`) to log anything they couldn't complete on their own. Surfaced in Settings → Integrations → Automation Activity — see the note under step 6 below.
 
 `supabase_schema_v6.sql` adds a missing `business_name` column to `proposals` — without it, Save Proposal in Proposal Builder would fail against a connected Supabase project and silently fall back to browser-only storage, so saved proposals never appeared. If you already ran `supabase_schema.sql` before this fix, this migration is what makes Save Proposal actually persist.
 
@@ -55,6 +55,8 @@ const SUPABASE_ANON_KEY = 'FILL_IN_YOUR_SUPABASE_ANON_KEY';
 ```
 
 with your project's actual anon/public key (Project Settings → API in the Supabase dashboard). This is safe to embed client-side — Row Level Security on `questionnaire_responses` restricts it to insert-only, so it can't read or modify anything else (and, per step 1, it has zero access to `api_credentials`).
+
+`index.html` now embeds the same project URL and anon key as `DEFAULT_SUPABASE_URL` / `DEFAULT_SUPABASE_ANON_KEY` (near `initSupabase()`), for the same reason and with the same safety guarantee — RLS is the real boundary, not secrecy of the anon key. This means the app auto-connects to Supabase on any origin (file://, localhost, a new deploy URL) with zero manual setup; Settings → Database still accepts a different URL/key to override it (e.g. pointing a local build at a separate test project). **If you ever point this deployment at a different Supabase project, update both `DEFAULT_SUPABASE_URL`/`DEFAULT_SUPABASE_ANON_KEY` in `index.html` and `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `questionnaire.html` to match — they're independent constants, not shared from one file.**
 
 Deploy `questionnaire.html` alongside `index.html` on whatever static host you're using (same repo, same deploy).
 
@@ -97,7 +99,26 @@ supabase functions deploy disconnect-credential
 supabase functions deploy gmail-oauth-start
 supabase functions deploy gmail-oauth-callback
 supabase functions deploy generate-meeting-brief
+supabase functions deploy check-integration-status
+supabase functions deploy send-questionnaire-email
+supabase functions deploy send-lead-email
 ```
+
+### Optional: skip pasting keys into Settings entirely
+
+Any of the five backend keys (`ANTHROPIC_API_KEY`, `HUBSPOT_API_KEY`, `READAI_API_KEY`, `FATHOM_API_KEY`, `MONDAY_API_KEY`) can instead be set as a plain Supabase secret:
+
+```bash
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+`_shared/credentials.ts`'s `getCredential()` checks `api_credentials` (Settings → Integrations) first and falls back to the matching env var if nothing's connected there — so a key set this way works immediately in every backend function, from every origin the app is opened from (file://, localhost, the live URL), with no re-pasting and no admin password needed. Settings → Integrations and Settings → Connection Status both show "Connected — Supabase secret" for these via the new `check-integration-status` function. Pasting a key into Settings still overrides the secret (useful for quick local testing with a different key).
+
+Because `getCredential()` lives in `_shared/credentials.ts`, this fallback only takes effect in functions that are redeployed after this change — that's every function in the list above except `gmail-oauth-callback` (which doesn't import credentials.ts).
+
+**This only covers the backend automation.** The in-browser AI drafting features (Inbox Manager, DM Manager, Proposal Builder, Call Notes, Follow-Up Tracker) call Claude/HubSpot directly from the browser using whatever's in `localStorage` under Settings → AI/CRM — those still need a key pasted per-origin, since a browser can't read a Supabase secret directly. Secrets only reach code that runs server-side, in an Edge Function.
+
+`send-lead-email` is called directly from the app (with the anon key), like `send-booking-email` — not webhook-triggered, so it needs no Database Webhook. It fires when the "Send" button is clicked in an AI draft modal (Nurture, Recap, Follow-Up, Reactivate, the manual "Book Call" confirmation email, or the Follow-Up Tracker's own draft flow) — it sends whatever's currently in the textarea (Claude's draft or the user's edits to it) as-is, no drafting of its own.
 
 `send-booking-email` is called directly from the app (with the anon key) when Mary clicks "Confirm & Send" in the Book Meeting modal — it also generates the meeting-prep brief automatically right after booking. `generate-meeting-brief` is called directly from the app when a meeting is booked through the manual "Book Call" button instead (both paths share the same logic in `_shared/meetingPrep.ts`). `save-credential`, `disconnect-credential`, and `gmail-oauth-start` are called directly from Settings → Integrations (admin-password gated). `get-credentials-status` is called from Settings to render the connection badges (read-only, no admin gate — it never returns key values). `gmail-oauth-callback` is only ever called by Google's redirect, never directly.
 
@@ -110,6 +131,18 @@ In the Supabase Dashboard: **Database → Webhooks → Create a new webhook**
 - Events: `INSERT`
 - Type: HTTP Request → your `qualify-lead` function URL (`https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/qualify-lead`)
 - Header: `Authorization: Bearer <service_role_key>` (Database Webhooks send with the service role by default in recent Supabase versions — confirm this is set so the function can read `leads` regardless of RLS)
+
+## 5b. Wire the new-lead webhook
+
+Same pattern, one table over — this is what makes `send-questionnaire-email` fire automatically the moment a lead row is created, no button anywhere in the app:
+
+In the Supabase Dashboard: **Database → Webhooks → Create a new webhook**
+- Table: `leads`
+- Events: `INSERT`
+- Type: HTTP Request → your `send-questionnaire-email` function URL (`https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/send-questionnaire-email`)
+- Header: `Authorization: Bearer <service_role_key>`
+
+`send-questionnaire-email` skips (without treating it as a failure) any row that already arrives with `questionnaire_sent_at` set — that's `sync-hubspot-leads`, which sets it itself and sends its own questionnaire email inline at insert time. This webhook is effectively what sends the questionnaire link for every other way a lead gets created, chiefly manual "+ Add Lead" in the Sales Pipeline tab, which never sets that field.
 
 ## 6. Schedule the recurring functions (pg_cron)
 
