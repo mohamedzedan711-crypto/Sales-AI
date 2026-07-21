@@ -149,6 +149,20 @@ tr:hover td{background:var(--bg-secondary);}
 .biz-name{font-weight:700;color:var(--navy);}
 .actions-cell{display:flex;gap:5px;flex-wrap:nowrap;}
 .actions-cell .btn{padding:6px 9px;font-size:11.5px;}
+
+/* LEADS TABLE: collapsible rows — no horizontal scroll needed to reach actions */
+.lead-row-collapsed{cursor:pointer;}
+.lead-expand-chevron{display:inline-block;font-size:11px;color:var(--text-muted);margin-right:6px;transition:transform .15s ease;}
+.lead-row-collapsed.expanded .lead-expand-chevron{transform:rotate(90deg);color:var(--pink);}
+.lead-detail-row td{background:var(--bg-secondary);border-bottom:2px solid var(--border);}
+.lead-detail-panel{padding:4px 4px 10px;}
+.lead-detail-meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:12.5px;color:var(--text-muted);margin-bottom:14px;}
+.lead-detail-meta strong{color:var(--navy);font-weight:700;}
+.lead-detail-panel .actions-cell{flex-wrap:wrap;}
+.dup-flag-badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;background:#fdf1e3;color:#c47f16;cursor:pointer;white-space:nowrap;}
+.dup-flag-badge:hover{background:#c47f16;color:#fff;}
+[data-theme="dark"] .dup-flag-badge{background:#332411;color:#fbbf24;}
+[data-theme="dark"] .dup-flag-badge:hover{background:#fbbf24;color:#1a1a2e;}
 .btn-delete-x{color:#c0334a;border-color:#c0334a;font-weight:800;padding:6px 9px;}
 .btn-delete-x:hover{background:#c0334a;color:#fff;}
 .btn-danger{background:#c0334a;border-color:#c0334a;color:#fff;}
@@ -355,8 +369,7 @@ tr:hover td{background:var(--bg-secondary);}
       <table>
         <thead><tr>
           <th><input type="checkbox" id="selectAllLeads" onchange="toggleSelectAllLeads(this.checked)"></th>
-          <th>Business</th><th>Contact</th><th>Source</th><th>Stage</th><th>Qualification</th><th>Practice</th>
-          <th>Location</th><th>Value</th><th>Last Contact</th><th>Next Follow-Up</th><th>Actions</th>
+          <th>Business</th><th>Contact</th><th>Stage</th><th>Qualification</th><th>Value</th><th>Next Follow-Up</th>
         </tr></thead>
         <tbody id="leadsTableBody"></tbody>
       </table>
@@ -485,7 +498,7 @@ tr:hover td{background:var(--bg-secondary);}
           <div class="card-title">Generated Proposal</div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-sm" onclick="copyProposal()">Copy Full Proposal</button>
-            <button class="btn btn-sm" onclick="generateCanvaBrief()">Canva Brief</button>
+            <button class="btn btn-sm" onclick="generateClaudeDesignBrief()">Claude Design Brief</button>
           </div>
         </div>
         <div id="proposalOutput" class="proposal-view"><p class="muted">Your generated proposal will appear here.</p></div>
@@ -493,9 +506,13 @@ tr:hover td{background:var(--bg-secondary);}
           <button class="btn btn-navy" onclick="saveProposal()">Save Proposal</button>
         </div>
       </div>
-      <div id="canvaBriefCard" class="card hidden">
-        <div class="card-title" style="margin-bottom:10px;">Canva Design Brief</div>
-        <div id="canvaBriefOutput" class="proposal-view"></div>
+      <div id="claudeDesignBriefCard" class="card hidden">
+        <div class="card-header">
+          <div class="card-title">Claude Design Brief</div>
+          <button class="btn btn-sm" onclick="copyElementText('claudeDesignBriefOutput')">Copy Brief</button>
+        </div>
+        <p class="muted" style="font-size:12px;margin-bottom:12px;">Paste this into Claude Design to generate the proposal visual. Note: Claude Design can burn through usage quickly on accounts that aren't upgraded to a paid tier — check your plan before heavy iteration.</p>
+        <div id="claudeDesignBriefOutput" class="proposal-view"></div>
       </div>
     </div>
   </div>
@@ -784,6 +801,7 @@ const MODEL = "claude-sonnet-4-6";
 let supabaseClient = null;
 let CONFIG = { supabase: { enabled: false } };
 let currentDmPlatform = "Instagram";
+let expandedLeadId = null;
 let currentProposalLeadId = null;
 let chatHistories = { pipeline: [], inbox: [], dm: [], proposal: [], followup: [] };
 let lastInboxProcessed = null;
@@ -819,10 +837,22 @@ function toast(msg,type){
 }
 
 /* ===================== DB LAYER (localStorage <-> Supabase) ===================== */
+/* Baked-in project defaults so the app (and everything Supabase-backed —
+   Integrations, Connection Status, qualification config, etc.) auto-connects
+   on any origin (file://, localhost, the live URL) without requiring the URL
+   and anon key to be pasted into Settings > Database first every time.
+   Safe to embed: the anon key is public by design, RLS is the real
+   boundary — this is the same key already embedded in questionnaire.html.
+   A different value pasted into Settings still overrides these. */
+const DEFAULT_SUPABASE_URL = 'https://cskenvvssmblqpbvtrig.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNza2VudnZzc21ibHFwYnZ0cmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1OTc3NjUsImV4cCI6MjA5OTE3Mzc2NX0.2UcdsmZAiK7VIG8Z7sS9TBd4qNcmxfszfJ745RH-9sM';
+function getSupabaseUrl(){ return localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL; }
+function getSupabaseAnonKey(){ return localStorage.getItem('supabase_anon_key') || DEFAULT_SUPABASE_ANON_KEY; }
+
 function initSupabase(){
-  const url = localStorage.getItem('supabase_url');
-  const key = localStorage.getItem('supabase_anon_key');
-  const enabled = localStorage.getItem('supabase_enabled') === 'true';
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
+  const enabled = localStorage.getItem('supabase_enabled') !== 'false'; // default on; an explicit 'false' opts out
   if(url && key && enabled){
     try{
       supabaseClient = supabase.createClient(url,key);
@@ -1236,12 +1266,13 @@ function saveSetting(key){
 }
 function loadSettingsIntoForm(){
   ['anthropic_key','hubspot_key','monday_key','gmail_key','mary_email','reply_name',
-   'readai_key','otter_key','prospero_key',
-   'supabase_url','supabase_anon_key'].forEach(k=>{
+   'readai_key','otter_key','prospero_key'].forEach(k=>{
     const el = document.getElementById(k);
     if(el) el.value = localStorage.getItem(k) || '';
   });
-  document.getElementById('supabase_enabled').checked = localStorage.getItem('supabase_enabled') === 'true';
+  document.getElementById('supabase_url').value = getSupabaseUrl();
+  document.getElementById('supabase_anon_key').value = getSupabaseAnonKey();
+  document.getElementById('supabase_enabled').checked = localStorage.getItem('supabase_enabled') !== 'false';
   refreshConnectionBadges();
   loadVoiceProfileIntoSettings();
 }
@@ -1293,18 +1324,22 @@ function updateHubspotStatusUI(){
 }
 function renderConnStatusTable(){
   const items = [
-    ['Claude AI (Anthropic)','anthropic_key'],
-    ['HubSpot','hubspot_key'],
-    ['Monday.com','monday_key'],
-    ['Gmail','gmail_key'],
-    ['Read.ai','readai_key'],
-    ['Otter.ai','otter_key'],
-    ['Prospero','prospero_key'],
+    ['Claude AI (Anthropic)','anthropic_key','anthropic'],
+    ['HubSpot','hubspot_key','hubspot'],
+    ['Monday.com','monday_key','monday'],
+    ['Gmail','gmail_key',null],
+    ['Read.ai','readai_key','readai'],
+    ['Otter.ai','otter_key',null],
+    ['Prospero','prospero_key',null],
   ];
   let html = '';
-  items.forEach(([label,key])=>{
-    const has = !!localStorage.getItem(key);
-    html += `<tr><td>${label}</td><td style="text-align:right;">${has?'<span class="badge badge-connected">Connected</span>':'<span class="badge badge-notconnected">Not Connected</span>'}</td></tr>`;
+  items.forEach(([label,key,secretKey])=>{
+    const hasLocal = !!localStorage.getItem(key);
+    const hasSecret = !!(secretKey && SERVER_SECRET_STATUS[secretKey]);
+    const badge = hasLocal ? '<span class="badge badge-connected">Connected</span>'
+      : hasSecret ? '<span class="badge badge-connected">Connected — Supabase secret</span>'
+      : '<span class="badge badge-notconnected">Not Connected</span>';
+    html += `<tr><td>${label}</td><td style="text-align:right;">${badge}</td></tr>`;
   });
   const supStatus = supabaseClient ? '<span class="badge badge-connected">Connected to Supabase</span>' : '<span class="badge badge-notconnected">Using localStorage</span>';
   html += `<tr><td>Database</td><td style="text-align:right;">${supStatus}</td></tr>`;
@@ -1348,30 +1383,45 @@ const INTEGRATION_KEYS = [
   { key:'fathom', label:'Fathom' }
 ];
 function integrationsFunctionsBase(){
-  const url = localStorage.getItem('supabase_url');
+  const url = getSupabaseUrl();
   return url ? `${url.replace(/\/$/,'')}/functions/v1` : null;
 }
 function integrationsAuthHeaders(){
-  const anon = localStorage.getItem('supabase_anon_key') || '';
+  const anon = getSupabaseAnonKey();
   return { 'Content-Type':'application/json', 'Authorization':'Bearer '+anon, 'apikey': anon };
 }
 function getAdminPassword(){
   const fromField = document.getElementById('integrationsAdminPassword')?.value.trim();
   return fromField || localStorage.getItem('admin_panel_password') || '';
 }
+let SERVER_SECRET_STATUS = {};
+async function loadServerSecretStatus(){
+  const base = integrationsFunctionsBase();
+  if(!base){ SERVER_SECRET_STATUS = {}; return; }
+  try{
+    const res = await fetch(`${base}/check-integration-status`, { headers: integrationsAuthHeaders() });
+    const data = await res.json();
+    SERVER_SECRET_STATUS = (res.ok && data.ok) ? (data.secrets || {}) : {};
+  }catch(e){ SERVER_SECRET_STATUS = {}; }
+}
 function renderIntegrationRows(statusData){
   const wrap = document.getElementById('integrationRows');
   if(!wrap) return;
   const rowsHtml = INTEGRATION_KEYS.map(({key,label})=>{
     const s = (statusData && statusData[key]) || {status:'not_connected'};
+    const viaSecret = s.status!=='connected' && !!SERVER_SECRET_STATUS[key];
     const badge = s.status==='connected' ? '<span class="badge badge-connected">Connected</span>'
+      : viaSecret ? '<span class="badge badge-connected">Connected — Supabase secret</span>'
       : s.status==='invalid' ? '<span class="badge badge-notconnected">Invalid Key</span>'
       : '<span class="badge badge-notconnected">Not Connected</span>';
+    const placeholder = viaSecret
+      ? `Already connected via ${key.toUpperCase()}_API_KEY secret — paste here only to override`
+      : `Paste ${label} API key...`;
     return `
       <div class="form-row">
         <label>${label} ${badge}</label>
         <div style="display:flex;gap:8px;">
-          <input type="password" id="integ_${key}" placeholder="Paste ${label} API key...">
+          <input type="password" id="integ_${key}" placeholder="${placeholder}">
           <button class="btn btn-sm" onclick="saveIntegrationKey('${key}')">Save</button>
         </div>
       </div>`;
@@ -1398,8 +1448,10 @@ async function loadIntegrationsStatus(){
   if(passwordField && !passwordField.value) passwordField.value = localStorage.getItem('admin_panel_password') || '';
   const base = integrationsFunctionsBase();
   const statusEl = document.getElementById('integrationsStatus');
+  await loadServerSecretStatus();
   if(!base){
     renderIntegrationRows(null);
+    renderConnStatusTable();
     if(statusEl) statusEl.textContent = 'Connect Supabase in the Database section above first — these are read from your Supabase project.';
     return;
   }
@@ -1408,9 +1460,11 @@ async function loadIntegrationsStatus(){
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
     renderIntegrationRows(data.credentials);
+    renderConnStatusTable();
     if(statusEl) statusEl.textContent = '';
   }catch(e){
     renderIntegrationRows(null);
+    renderConnStatusTable();
     if(statusEl) statusEl.textContent = 'Could not load integration status — is get-credentials-status deployed? ('+e.message+')';
   }
 }
@@ -1669,6 +1723,47 @@ function stripAiDashes(text){
 function stripJsonFence(text){
   return text.replace(/```json/gi,'').replace(/```/g,'').trim();
 }
+// Scans for balanced {...} blocks and returns the LAST one found. Claude
+// puts its actual answer after any explanatory prose, and prose can contain
+// its own stray "{" (e.g. referencing "the {field} value" conversationally)
+// — a naive first-"{"-to-last-"}" regex breaks the moment that happens,
+// because it spans from the prose's brace all the way to the real answer's
+// closing brace, producing an invalid blob. Balanced-brace scanning finds
+// each self-contained {...} block independently and keeps the last one,
+// which is reliably Claude's actual answer.
+function findLastJsonObject(text){
+  let best = null;
+  for(let i=0;i<text.length;i++){
+    if(text[i] !== '{') continue;
+    let depth = 0;
+    for(let j=i;j<text.length;j++){
+      if(text[j]==='{') depth++;
+      else if(text[j]==='}'){
+        depth--;
+        if(depth===0){ best = text.slice(i,j+1); break; }
+      }
+    }
+  }
+  return best;
+}
+// stripJsonFence only strips markdown code fences — it does nothing if Claude
+// prepends/appends prose around the JSON despite being told not to (a common
+// LLM behavior, not a hypothetical). This tries the direct parse first, then
+// falls back to the balanced-brace scan above before giving up, so a stray
+// lead-in sentence (or a stray brace inside one) doesn't silently break
+// every caller downstream.
+function extractJsonObject(text){
+  try{ return JSON.parse(stripJsonFence(text)); }
+  catch(e){
+    const block = findLastJsonObject(stripJsonFence(text));
+    if(block){
+      try{ return JSON.parse(block); }
+      catch(e2){ /* fall through to the log below */ }
+    }
+    console.error('Could not parse JSON from Claude response:', text);
+    return null;
+  }
+}
 
 /* ===================== FILE UPLOAD / EXTRACTION ===================== */
 if(window.pdfjsLib){
@@ -1814,14 +1909,14 @@ function copyElementText(id){
 }
 
 /* ===================== AI DRAFT MODAL (generic) ===================== */
-async function openAIDraftModal(title, systemPrompt, userPrompt, afterSaveCb){
+async function openAIDraftModal(title, systemPrompt, userPrompt, leadId, afterSaveCb){
   window.__lastAiDraftText = null;
   openModal(title, `<div class="ai-loading">Drafting with Claude...</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
   const key = localStorage.getItem('anthropic_key');
   if(!key){
     updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>
       <textarea id="aiDraftText" rows="12" placeholder="Write the message manually..."></textarea>`);
-    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn" onclick="closeModal()">Close</button>`);
+    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="aiDraftSendBtn" onclick="sendAIDraftEmail('${leadId}')">Send</button><button class="btn" onclick="closeModal()">Close</button>`);
     return;
   }
   const result = await callClaude(systemPrompt, userPrompt);
@@ -1832,11 +1927,43 @@ async function openAIDraftModal(title, systemPrompt, userPrompt, afterSaveCb){
   window.__lastAiDraftText = result.text;
   updateModalBody(`<textarea id="aiDraftText" rows="14">${escapeHtml(result.text)}</textarea>`);
   let footer = `<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button>`;
+  footer += `<button class="btn btn-pink" id="aiDraftSendBtn" onclick="sendAIDraftEmail('${leadId}')">Send</button>`;
   if(afterSaveCb) footer += `<button class="btn btn-pink" onclick="(${afterSaveCbWrapperName})()">Mark as Sent</button>`;
   footer += `<button class="btn" onclick="closeModal()">Close</button>`;
   updateModalFooter(footer);
   if(afterSaveCb){
     window.__aiDraftAfterSave = afterSaveCb;
+  }
+}
+async function sendAIDraftEmail(leadId){
+  const draftEl = document.getElementById('aiDraftText');
+  if(!draftEl) return;
+  const raw = draftEl.value;
+  const subjectMatch = raw.match(/^Subject:\s*(.+)$/mi);
+  const subject = subjectMatch ? subjectMatch[1].trim() : 'A message from Social Practice';
+  const body = subjectMatch ? raw.replace(/^Subject:.*$/mi, '').trim() : raw.trim();
+  if(!body){ toast('Nothing to send — write a message first.','error'); return; }
+
+  const btn = document.getElementById('aiDraftSendBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
+
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-lead-email`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ leadId, subject, body })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    toast('Email sent.','success');
+    closeModal();
+    await refreshPipeline();
+  }catch(e){
+    toast('Could not send the email — is send-lead-email deployed and Gmail connected? ('+e.message+')','error');
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
   }
 }
 const afterSaveCbWrapperName = '__runAiDraftAfterSave';
@@ -1960,7 +2087,7 @@ async function renderLeadsTable(){
   const coldLeads = allLeadsCache.filter(l=> !['Signed','Lost'].includes(l.stage) && daysBetween(l.last_contact||t, t) >= 14 );
 
   document.getElementById('leadsTableBody').innerHTML = warmLeads.length ? warmLeads.map(l=>leadRowHtml(l)).join('') :
-    `<tr><td colspan="12" class="chat-empty">No leads match your filters.</td></tr>`;
+    `<tr><td colspan="7" class="chat-empty">No leads match your filters.</td></tr>`;
   updateBulkDeleteBar();
 
   const coldBody = document.getElementById('coldLeadsBody');
@@ -1991,37 +2118,55 @@ function qualificationBadgeHtml(l){
   }
   return `<span class="muted" style="font-size:12px;">—</span>`;
 }
+function toggleLeadExpand(id){
+  expandedLeadId = (expandedLeadId === id) ? null : id;
+  renderLeadsTable();
+}
 function leadRowHtml(l){
-  return `<tr>
-    <td><input type="checkbox" class="lead-select-cb" data-id="${l.id}" onchange="updateBulkDeleteBar()"></td>
-    <td class="biz-name">${escapeHtml(l.business_name)}</td>
+  const expanded = expandedLeadId === l.id;
+  const collapsedRow = `<tr class="lead-row-collapsed${expanded?' expanded':''}" onclick="toggleLeadExpand('${l.id}')">
+    <td onclick="event.stopPropagation()"><input type="checkbox" class="lead-select-cb" data-id="${l.id}" onchange="updateBulkDeleteBar()"></td>
+    <td class="biz-name"><span class="lead-expand-chevron">▸</span>${escapeHtml(l.business_name)}${l.duplicate_flag ? `<span class="dup-flag-badge" title="Possible duplicate — click to review" onclick="event.stopPropagation();showDuplicateFlagInfo('${l.id}')">⚠ possible duplicate</span>` : ''}</td>
     <td>${escapeHtml(l.contact_name)}<br><span class="muted" style="font-size:11.5px;">${escapeHtml(l.email||'')}</span></td>
-    <td>${escapeHtml(l.source||'')}</td>
-    <td>
+    <td onclick="event.stopPropagation()">
       <select class="stage-select stage-${l.stage.replace(/ /g,'\\ ')}" onchange="changeLeadStage('${l.id}', this.value)">
         ${STAGES.map(s=>`<option value="${s}" ${s===l.stage?'selected':''}>${s}</option>`).join('')}
       </select>
     </td>
     <td>${qualificationBadgeHtml(l)}</td>
-    <td>${escapeHtml(l.practice_type||'')}</td>
-    <td>${escapeHtml(l.location||'')}</td>
     <td>${fmtMoney(l.proposal_value)}/mo</td>
-    <td>${fmtDate(l.last_contact)}</td>
     <td>${fmtDate(l.next_followup)}</td>
-    <td><div class="actions-cell">
-      <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
-      <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
-      ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
-      ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
-      <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
-      <button class="btn btn-sm" onclick="sendToProposal('${l.id}')">Proposal</button>
-      <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
-      <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
-      <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
-      <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
-      <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="openDeleteLeadModal('${l.id}')">✕</button>
-    </div></td>
   </tr>`;
+
+  if(!expanded) return collapsedRow;
+
+  const detailRow = `<tr class="lead-detail-row">
+    <td colspan="7">
+      <div class="lead-detail-panel">
+        <div class="lead-detail-meta">
+          <div><strong>Source:</strong> ${escapeHtml(l.source||'—')}</div>
+          <div><strong>Practice Type:</strong> ${escapeHtml(l.practice_type||'—')}</div>
+          <div><strong>Location:</strong> ${escapeHtml(l.location||'—')}</div>
+          <div><strong>Last Contact:</strong> ${fmtDate(l.last_contact)}</div>
+        </div>
+        <div class="actions-cell">
+          <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
+          <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
+          ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
+          ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
+          <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
+          <button class="btn btn-sm" onclick="sendToProposal('${l.id}')">Proposal</button>
+          <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
+          <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
+          <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
+          <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
+          <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="openDeleteLeadModal('${l.id}')">✕</button>
+        </div>
+      </div>
+    </td>
+  </tr>`;
+
+  return collapsedRow + detailRow;
 }
 function findLeadById(id){ return allLeadsCache.find(l=>l.id===id); }
 
@@ -2123,7 +2268,29 @@ async function changeLeadStage(id, stage){
   const lead = findLeadById(id);
   const changes = { stage };
   const t = todayISO();
-  if(stage==='Signed') changes.signed_date = t;
+  if(stage==='Signed'){
+    changes.signed_date = t;
+    // Frozen once, the first time a deal is marked Signed — never
+    // overwritten again, even if this somehow re-fires or the live lead
+    // fields change later. See supabase_schema_v7.sql.
+    if(lead && !lead.signed_snapshot){
+      changes.signed_snapshot = {
+        business_name: lead.business_name,
+        contact_name: lead.contact_name,
+        email: lead.email,
+        practice_type: lead.practice_type,
+        proposal_value: lead.proposal_value,
+        location: lead.location,
+      };
+      await CommLogDB.insert({
+        lead_id: id,
+        type: 'deal_signed',
+        subject: 'Deal signed',
+        content: `Deal signed: ${lead.business_name}, ${lead.practice_type||'n/a'}, ${fmtMoney(lead.proposal_value)}/mo`,
+        sent_at: new Date().toISOString(),
+      });
+    }
+  }
   await LeadsDB.update(id, changes);
   if(stage==='Proposal Sent' || stage==='Agreement Sent'){
     await ensureFollowupForLead(id, stage==='Agreement Sent' ? 'Agreement' : 'Proposal');
@@ -2156,21 +2323,24 @@ async function actionNurture(id){
   const l = findLeadById(id);
   await openAIDraftModal(`Nurture Email — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a warm nurture email to keep this lead engaged without being pushy. This lead has not yet booked a discovery call."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a warm nurture email (with subject line) that keeps the relationship alive and gently moves them toward booking a discovery call. Write ONLY the email, no preamble.`);
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a warm nurture email (with subject line) that keeps the relationship alive and gently moves them toward booking a discovery call. Write ONLY the email, no preamble.`,
+    l.id);
   logComm(l.id, 'nurture', 'Nurture email drafted');
 }
 async function actionRecap(id){
   const l = findLeadById(id);
   await openAIDraftModal(`Discovery Call Recap — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a post-discovery-call recap email."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a recap email thanking them for the discovery call, briefly summarizing what was likely discussed based on their notes, and letting them know a tailored proposal is coming next. Write ONLY the email, no preamble.`);
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a recap email thanking them for the discovery call, briefly summarizing what was likely discussed based on their notes, and letting them know a tailored proposal is coming next. Write ONLY the email, no preamble.`,
+    l.id);
   logComm(l.id, 'recap', 'Recap email drafted');
 }
 async function actionFollowUp(id){
   const l = findLeadById(id);
   await openAIDraftModal(`Follow-Up Email — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a follow-up email appropriate to this lead's current stage."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a follow-up email checking in given how long it has been since last contact and their current stage. Write ONLY the email, no preamble.`);
+    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a follow-up email checking in given how long it has been since last contact and their current stage. Write ONLY the email, no preamble.`,
+    l.id);
   await LeadsDB.update(id, { last_contact: todayISO() });
   logComm(l.id, 'followup', 'Follow-up email drafted');
   await refreshPipeline();
@@ -2179,7 +2349,8 @@ async function actionReactivate(id){
   const l = allLeadsCache.find(x=>x.id===id) || (await LeadsDB.getAll()).find(x=>x.id===id);
   await openAIDraftModal(`Reactivation Message — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a re-engagement message for a cold lead who has gone quiet."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nThis lead has gone cold with no contact in a while. Write a low-pressure re-engagement email that references their original interest and gives them a fresh, easy reason to reconnect. Write ONLY the email, no preamble.`);
+    `Here is the lead context:\n${leadCtx(l)}\n\nThis lead has gone cold with no contact in a while. Write a low-pressure re-engagement email that references their original interest and gives them a fresh, easy reason to reconnect. Write ONLY the email, no preamble.`,
+    l.id);
   logComm(l.id, 'reactivate', 'Reactivation message drafted');
 }
 async function logComm(leadId, type, subject){
@@ -2221,12 +2392,13 @@ async function confirmBookCall(id){
   triggerMeetingPrepBrief(id);
   await openAIDraftModal(`Confirmation Email — ${l.business_name}`,
     await buildSystemPrompt("Task: Draft a discovery call confirmation email."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nA discovery call has just been scheduled for ${fmtDate(date)} at ${time}. Write a confirmation email that confirms the date/time, sets expectations for the call, and shows genuine enthusiasm to speak with them. Write ONLY the email, no preamble.`);
+    `Here is the lead context:\n${leadCtx(l)}\n\nA discovery call has just been scheduled for ${fmtDate(date)} at ${time}. Write a confirmation email that confirms the date/time, sets expectations for the call, and shows genuine enthusiasm to speak with them. Write ONLY the email, no preamble.`,
+    l.id);
   logComm(l.id, 'book_call', `Discovery call booked for ${fmtDate(date)} ${time}`);
 }
 async function triggerMeetingPrepBrief(id){
-  const supabaseUrl = localStorage.getItem('supabase_url');
-  const anonKey = localStorage.getItem('supabase_anon_key');
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
   if(!supabaseUrl || !anonKey) return; // Supabase not connected — skip silently, nothing to build the brief from server-side
   try{
     const res = await fetch(`${supabaseUrl}/functions/v1/generate-meeting-brief`, {
@@ -2260,8 +2432,8 @@ function openBookMeetingModal(id){
 async function confirmBookMeeting(id){
   const date = document.getElementById('bookMeetingDate').value;
   const time = document.getElementById('bookMeetingTime').value;
-  const supabaseUrl = localStorage.getItem('supabase_url');
-  const anonKey = localStorage.getItem('supabase_anon_key');
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
   if(!supabaseUrl || !anonKey){ toast('Connect Supabase in Settings to send booking emails.','error'); return; }
   closeModal();
   toast('Sending meeting proposal...');
@@ -2297,7 +2469,10 @@ async function openHistoryModal(id){
   const proposals = (await ProposalsDB.getAll()).filter(p=>p.lead_id===id);
   const followups = (await FollowupsDB.getAll()).filter(f=>f.lead_id===id);
   let html = `<h4 style="margin-bottom:10px;color:var(--navy);">Communications</h4>`;
-  html += comms.length ? comms.map(c=>`<div class="list-item"><div><div class="list-item-title">${escapeHtml(c.subject||c.type)}</div><div class="list-item-sub">${new Date(c.sent_at).toLocaleString()}</div></div></div>`).join('') : `<p class="muted" style="margin-bottom:14px;">No communications logged yet.</p>`;
+  html += comms.length ? comms.map(c=>{
+    const isSigned = c.type==='deal_signed';
+    return `<div class="list-item"${isSigned ? ' style="border-color:#1a9e5c;"' : ''}><div><div class="list-item-title">${isSigned ? '🎉 ' : ''}${escapeHtml(isSigned ? 'Deal Signed' : (c.subject||c.type))}</div><div class="list-item-sub">${isSigned ? escapeHtml(c.content)+' · ' : ''}${new Date(c.sent_at).toLocaleString()}</div></div></div>`;
+  }).join('') : `<p class="muted" style="margin-bottom:14px;">No communications logged yet.</p>`;
   html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Proposals</h4>`;
   html += proposals.length ? proposals.map(p=>`<div class="list-item"><div><div class="list-item-title">${fmtMoney(p.value)}/mo</div><div class="list-item-sub">${new Date(p.created_at).toLocaleDateString()} · ${p.status}</div></div></div>`).join('') : `<p class="muted" style="margin-bottom:14px;">No proposals yet.</p>`;
   html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Follow-Ups</h4>`;
@@ -2355,11 +2530,48 @@ function collectLeadForm(){
 async function saveNewLead(){
   const data = collectLeadForm();
   if(!data.business_name){ toast('Business name is required.','error'); return; }
+  const allLeads = await LeadsDB.getAll();
+  if(data.email){
+    const emailLower = data.email.toLowerCase();
+    const existing = allLeads.find(l=>(l.email||'').trim().toLowerCase()===emailLower);
+    if(existing){ showDuplicateLeadModal(existing); return; }
+  }
+  // Soft check: different email, but same contact + business + value — advisory
+  // only, never blocks. See supabase_schema_v7.sql for duplicate_flag.
+  let softMatch = null;
+  if(data.contact_name.trim()){
+    softMatch = allLeads.find(l=>
+      (l.contact_name||'').trim().toLowerCase()===data.contact_name.trim().toLowerCase() &&
+      (l.business_name||'').trim().toLowerCase()===data.business_name.trim().toLowerCase() &&
+      Number(l.proposal_value||0)===Number(data.proposal_value||0)
+    );
+  }
+  if(softMatch) data.duplicate_flag = softMatch.id;
   const inserted = await LeadsDB.insert(data);
   closeModal();
-  toast('Lead added.','success');
+  if(softMatch){
+    toast(`Heads up — this looks similar to an existing lead: ${softMatch.business_name}. Both were kept, but you may want to review them.`);
+  } else {
+    toast('Lead added.','success');
+  }
   await refreshPipeline();
   await pushLeadToHubspot(inserted);
+}
+function showDuplicateLeadModal(existing){
+  openModal('Duplicate Lead', `
+    <p style="font-size:14px;line-height:1.6;">A lead with this email already exists: <strong>${escapeHtml(existing.business_name)}</strong> (${escapeHtml(existing.stage)}).</p>
+    <p class="muted" style="margin-top:8px;">No new lead was created. You can edit the existing one instead, or cancel and use a different email.</p>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="openEditLeadModal('${existing.id}')">View/Edit Existing Lead</button>
+  `);
+}
+async function showDuplicateFlagInfo(id){
+  const lead = findLeadById(id) || (await LeadsDB.getAll()).find(l=>l.id===id);
+  if(!lead || !lead.duplicate_flag) return;
+  const other = findLeadById(lead.duplicate_flag) || (await LeadsDB.getAll()).find(l=>l.id===lead.duplicate_flag);
+  if(!other){ toast('The other flagged lead could not be found — it may have been deleted.','error'); return; }
+  openEditLeadModal(other.id);
 }
 async function saveEditLead(id){
   const before = findLeadById(id);
@@ -2813,18 +3025,18 @@ function copyProposal(){
   if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
   navigator.clipboard.writeText(lastProposalText).then(()=>toast('Proposal copied to clipboard.','success'));
 }
-async function generateCanvaBrief(){
+async function generateClaudeDesignBrief(){
   if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
-  const card = document.getElementById('canvaBriefCard');
-  const outEl = document.getElementById('canvaBriefOutput');
+  const card = document.getElementById('claudeDesignBriefCard');
+  const outEl = document.getElementById('claudeDesignBriefOutput');
   card.classList.remove('hidden');
-  outEl.innerHTML = `<div class="ai-loading">Building Canva brief with Claude...</div>`;
+  outEl.innerHTML = `<div class="ai-loading">Building Claude Design brief...</div>`;
   const result = await callClaude(
-    await buildSystemPrompt("Task: Turn a written sales proposal into a Canva design brief for a visual deck."),
-    `Here is a written proposal:\n\n${lastProposalText}\n\nWrite a Canva design brief for turning this into a visual proposal deck: recommend slide count and structure, per-slide content summary, suggested color palette (Social Practice brand: deep navy #1a1a2e and hot pink #e91e8c, clean/modern, medical aesthetics industry appropriate), font pairing suggestions, and imagery direction. Use ## markdown headers.`
+    await buildSystemPrompt("Task: Turn a written sales proposal into a structured brief formatted specifically for Claude Design (an interactive design tool a person runs manually inside Claude — not an API to call). The output should read like a clear spec someone would hand to Claude Design to generate a visual proposal deck, not commentary about the proposal."),
+    `Here is a written proposal:\n\n${lastProposalText}\n\nWrite a Claude Design brief with these sections, using ## markdown headers:\n- Purpose (what this document/deck is for and who it's going to)\n- Structure (the sections/slides it needs, in order, with a one-line summary of what each one contains)\n- Tone & Style (how it should feel to read — reference Social Practice's brand: deep navy #1a1a2e and hot pink #e91e8c, clean/modern, medical aesthetics industry appropriate)\n- Brand Details (anything already known about Mary's business/Social Practice that Claude Design should reflect)\nWrite it as direct instructions Claude Design can act on.`
   );
   if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  outEl.innerHTML = renderSectionedProposal(result.text, 'canvaSec');
+  outEl.innerHTML = renderSectionedProposal(result.text, 'claudeDesignSec');
 }
 async function saveProposal(){
   if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
@@ -3122,7 +3334,7 @@ async function openFollowUpNowModal(id){
   const key = localStorage.getItem('anthropic_key');
   if(!key){
     updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p><textarea id="aiDraftText" rows="10"></textarea>`);
-    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
+    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="followupSendBtn" onclick="sendFollowupDraftEmail('${id}','${f.lead_id||''}')">Send</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
     return;
   }
   const result = await callClaude(
@@ -3131,7 +3343,37 @@ async function openFollowUpNowModal(id){
   );
   if(!result.ok){ updateModalBody(`<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`); return; }
   updateModalBody(`<textarea id="aiDraftText" rows="12">${escapeHtml(result.text)}</textarea>`);
-  updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
+  updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="followupSendBtn" onclick="sendFollowupDraftEmail('${id}','${f.lead_id||''}')">Send</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
+}
+async function sendFollowupDraftEmail(followupId, leadId){
+  const draftEl = document.getElementById('aiDraftText');
+  if(!draftEl) return;
+  if(!leadId){ toast('This follow-up has no linked lead on file — cannot send.','error'); return; }
+  const raw = draftEl.value;
+  const subjectMatch = raw.match(/^Subject:\s*(.+)$/mi);
+  const subject = subjectMatch ? subjectMatch[1].trim() : 'A follow-up from Social Practice';
+  const body = subjectMatch ? raw.replace(/^Subject:.*$/mi, '').trim() : raw.trim();
+  if(!body){ toast('Nothing to send — write a message first.','error'); return; }
+
+  const btn = document.getElementById('followupSendBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
+
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-lead-email`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ leadId, subject, body })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    await markFollowupSent(followupId);
+  }catch(e){
+    toast('Could not send the email — is send-lead-email deployed and Gmail connected? ('+e.message+')','error');
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
 }
 async function markFollowupSent(id){
   const followups = await FollowupsDB.getAll();
@@ -3192,9 +3434,85 @@ async function buildChatContext(key){
   return '';
 }
 /* ===================== CHAT-BASED DELETE CONFIRMATION ===================== */
-let chatPendingDelete = {};
-function looksLikeDeleteRequest(msg){
-  return /\b(delete|remove|get rid of|erase|trash)\b/i.test(msg);
+/* Config-driven record type per chat-enabled tab. One shared view/edit/delete
+   pipeline (resolveChatTarget/executeChatAction below) reasons about whichever
+   table `key` maps to here — never crosses tab boundaries. `inbox` has no
+   persistent table and isn't listed, so it's automatically excluded and keeps
+   its original descriptive-only behavior. */
+const CHAT_RECORD_CONFIG = {
+  pipeline: {
+    db: LeadsDB,
+    label: r => `${r.contact_name||'(no contact name)'} from ${r.business_name||'(no business name)'}`,
+    editableFields: ['business_name','contact_name','email','phone','practice_type','location','proposal_value','notes'],
+    numericFields: ['proposal_value'],
+    // Leads-specific concept — never offered as an intent option, or checked
+    // for, on any other tab's config. See resolveChatTarget/sendChatMessage.
+    supportsBulkDedupe: true,
+    // Belt-and-suspenders only — the prompt in resolveChatTarget already
+    // lists the exact editable field names and constrains Claude to them,
+    // and that's confirmed working. This just catches it cheaply if Claude
+    // ever answers with a natural synonym instead of the literal column name.
+    fieldSynonyms: { budget:'proposal_value', value:'proposal_value', price:'proposal_value', cost:'proposal_value', company:'business_name', business:'business_name', name:'contact_name', contact:'contact_name' },
+    viewFields: [
+      ['Business', r=>r.business_name], ['Contact', r=>r.contact_name], ['Email', r=>r.email], ['Phone', r=>r.phone],
+      ['Stage', r=>r.stage], ['Qualification', r=>r.qualified===true?`Qualified${r.qualification_score!=null?' · '+r.qualification_score:''}`:r.qualified===false?'Not Qualified':'Not yet scored'],
+      ['Practice Type', r=>r.practice_type], ['Location', r=>r.location], ['Value', r=>fmtMoney(r.proposal_value)+'/mo'],
+      ['Source', r=>r.source], ['Last Contact', r=>fmtDate(r.last_contact)], ['Next Follow-Up', r=>fmtDate(r.next_followup)], ['Notes', r=>r.notes],
+    ],
+    async remove(id){ await deleteLeadCascade(id); },
+    async afterChange(){ await refreshPipeline(); await renderFollowupTable(); await renderSavedProposals(); },
+  },
+  proposal: {
+    db: ProposalsDB,
+    label: r => `the proposal for ${r.business_name||'a lead'} (${new Date(r.created_at).toLocaleDateString()})`,
+    editableFields: ['content','value','status'],
+    numericFields: ['value'],
+    fieldSynonyms: { budget:'value', price:'value', amount:'value' },
+    viewFields: [
+      ['Business', r=>r.business_name||'—'], ['Value', r=>fmtMoney(r.value)+'/mo'], ['Status', r=>r.status],
+      ['Created', r=>new Date(r.created_at).toLocaleDateString()],
+      ['Content', r=>(r.content||'').length>300 ? r.content.slice(0,300)+'…' : (r.content||'')],
+    ],
+    async remove(id){ await ProposalsDB.remove(id); },
+    async afterChange(){ await renderSavedProposals(); },
+  },
+  callnotes: {
+    db: CallNotesDB,
+    label: r => `the call notes for ${r.lead_name||'a lead'} on ${fmtDate(r.call_date)}`,
+    editableFields: ['call_type','call_date','caller_name','duration','raw_notes','call_overview'],
+    viewFields: [
+      ['Lead', r=>r.lead_name], ['Call Type', r=>r.call_type], ['Date', r=>fmtDate(r.call_date)],
+      ['Caller', r=>r.caller_name], ['Duration', r=>r.duration], ['Overview', r=>r.call_overview],
+    ],
+    async remove(id){ await CallNotesDB.remove(id); },
+    async afterChange(){ await renderSavedCalls(); },
+  },
+  followup: {
+    db: FollowupsDB,
+    label: r => `the ${r.type||'follow-up'} follow-up for ${r.business_name||'a lead'}`,
+    editableFields: ['type','next_date','status'],
+    viewFields: [
+      ['Business', r=>r.business_name], ['Contact', r=>r.contact_name], ['Type', r=>r.type],
+      ['Sent', r=>fmtDate(r.sent_date)], ['Count', r=>r.count], ['Next Date', r=>fmtDate(r.next_date)], ['Status', r=>r.status],
+    ],
+    async remove(id){ await FollowupsDB.remove(id); },
+    async afterChange(){ await renderFollowupTable(); },
+  },
+  dm: {
+    db: DmLogDB,
+    label: r => `the ${r.platform||'DM'}${r.sender ? ' from '+r.sender : ''}`,
+    editableFields: ['reply'],
+    viewFields: [
+      ['Platform', r=>r.platform], ['Sender', r=>r.sender], ['Message', r=>r.message], ['Reply', r=>r.reply],
+      ['Processed', r=>r.processed_at ? new Date(r.processed_at).toLocaleString() : ''],
+    ],
+    async remove(id){ await DmLogDB.remove(id); },
+    async afterChange(){ renderDmPanels(); },
+  },
+};
+let chatPendingAction = {};
+function looksLikeRecordAction(msg){
+  return /\b(delete|remove|get rid of|erase|trash|change|update|edit|correct|fix|set|rename|show me|show|pull up|what do we have|what's|whats|tell me about|look ?up|find|duplicate|dedupe|dedup|merge|clean ?up)\b/i.test(msg);
 }
 function isConfirmReply(msg){
   const m = msg.trim().toLowerCase();
@@ -3204,58 +3522,145 @@ function isCancelReply(msg){
   const m = msg.trim().toLowerCase();
   return /^(no|n|nope|cancel|stop|nevermind|never mind|don'?t|do not)\b/.test(m);
 }
-function buildDeleteConfirmMessage(match){
-  if(match.matched_type === 'lead'){
+function buildDeleteConfirmMessage(key, match){
+  if(key === 'pipeline'){
     return `I'm about to permanently delete ${match.matched_label}. This will also remove all their communications history, proposals, and follow-up entries. This cannot be undone. Type YES to confirm or NO to cancel.`;
   }
   return `I'm about to permanently delete ${match.matched_label}. This cannot be undone. Type YES to confirm or NO to cancel.`;
 }
-async function resolveDeleteTarget(key, msg){
-  const leads = await LeadsDB.getAll();
-  let candidates = leads.map(l=>({ type:'lead', id:l.id, label:`${l.contact_name} from ${l.business_name}` }));
-  if(key==='proposal'){
-    const proposals = await ProposalsDB.getAll();
-    candidates = candidates.concat(proposals.map(p=>({ type:'proposal', id:p.id, label:`the proposal for ${p.business_name} (${new Date(p.created_at).toLocaleDateString()})` })));
-  }
-  if(key==='followup'){
-    const followups = await FollowupsDB.getAll();
-    candidates = candidates.concat(followups.map(f=>({ type:'followup', id:f.id, label:`the ${f.type} follow-up for ${f.business_name}` })));
-  }
-  if(key==='callnotes'){
-    const calls = await CallNotesDB.getAll();
-    candidates = candidates.concat(calls.map(c=>({ type:'callnote', id:c.id, label:`the call notes for ${c.lead_name} on ${fmtDate(c.call_date)}` })));
-  }
-  if(!candidates.length) return null;
-  const result = await callClaude(
-    'You identify which record (if any) a user is asking to delete, matched against a list of candidate records. Respond with ONLY valid JSON, no markdown fences, no explanation.',
-    `User message: "${msg}"\n\nCandidate records (type | id | label):\n${candidates.map(c=>`${c.type} | ${c.id} | ${c.label}`).join('\n')}\n\nReturn JSON with exactly these keys: is_delete_request (boolean — true if the user is asking to delete/remove something), matched_id (the id string of the single candidate they mean, or null if unclear/no match), matched_type (the type of the matched candidate, or null), matched_label (the label of the matched candidate, or null).`
-  );
-  if(!result.ok) return null;
-  try{ return JSON.parse(stripJsonFence(result.text)); }
-  catch(e){ return null; }
+function buildEditConfirmMessage(match, oldValue){
+  const oldDisplay = (oldValue===undefined || oldValue===null || oldValue==='') ? '(empty)' : oldValue;
+  return `Change ${match.field} for ${match.matched_label} from ${oldDisplay} to ${match.new_value}? Type YES to confirm or NO to cancel.`;
 }
-async function executeChatDelete(pending){
-  if(pending.type === 'lead'){
-    const lead = await deleteLeadCascade(pending.id);
+/* Bulk duplicate cleanup — pipeline/leads only. Reuses the exact same two
+   match criteria already established in saveNewLead()/sync-hubspot-leads:
+   (a) exact case-insensitive email match, (b) same contact_name + same
+   business_name + same proposal_value (case-insensitive on text fields,
+   guarded against blank contact_name to avoid clustering unrelated blanks).
+   Clusters merge transitively via union-find, so A~B (by email) + B~C (by
+   the soft match) puts all three in one group even though A and C never
+   matched each other directly. */
+function leadsAreDuplicates(a, b){
+  const emailA = (a.email||'').trim().toLowerCase();
+  const emailB = (b.email||'').trim().toLowerCase();
+  if(emailA && emailB && emailA===emailB) return true;
+  const contactA = (a.contact_name||'').trim().toLowerCase();
+  if(!contactA) return false;
+  const contactB = (b.contact_name||'').trim().toLowerCase();
+  const bizA = (a.business_name||'').trim().toLowerCase();
+  const bizB = (b.business_name||'').trim().toLowerCase();
+  return contactA===contactB && bizA && bizA===bizB && Number(a.proposal_value||0)===Number(b.proposal_value||0);
+}
+function findDuplicateClusters(leads){
+  const parent = leads.map((_, i)=>i);
+  function find(i){ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; }
+  function union(i, j){ const ri=find(i), rj=find(j); if(ri!==rj) parent[ri]=rj; }
+  for(let i=0;i<leads.length;i++){
+    for(let j=i+1;j<leads.length;j++){
+      if(leadsAreDuplicates(leads[i], leads[j])) union(i, j);
+    }
+  }
+  const groups = {};
+  leads.forEach((lead, i)=>{
+    const root = find(i);
+    (groups[root] = groups[root] || []).push(lead);
+  });
+  return Object.values(groups).filter(g=>g.length>=2);
+}
+function fmtShortDate(dateStr){
+  if(!dateStr) return 'unknown date';
+  try{ return new Date(dateStr).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+  catch(e){ return dateStr; }
+}
+function buildDedupeClusterInfo(cluster){
+  const sorted = [...cluster].sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+  const keep = sorted[0];
+  const toDelete = sorted.slice(1);
+  const stagesDiffer = new Set(cluster.map(c=>c.stage)).size > 1;
+  const notesDiffer = new Set(cluster.map(c=>(c.notes||'').trim())).size > 1;
+  return { keep, toDelete, stagesDiffer, notesDiffer };
+}
+function buildBulkDedupeConfirmMessage(clusterInfos){
+  let totalDeletes = 0;
+  const lines = clusterInfos.map((info, i)=>{
+    totalDeletes += info.toDelete.length;
+    const label = `${info.keep.business_name} (${info.keep.contact_name})`;
+    const copies = info.toDelete.length + 1;
+    let line = `${i+1}. ${label} — ${copies} copies found.\n   Keeping the earliest (created ${fmtShortDate(info.keep.created_at)}), deleting ${info.toDelete.length} duplicate${info.toDelete.length>1?'s':''}.`;
+    const warnings = [];
+    if(info.stagesDiffer) warnings.push('stages differ across copies');
+    if(info.notesDiffer) warnings.push('notes differ across copies');
+    if(warnings.length) line += `\n   ⚠ Note: ${warnings.join('; ')} — review before confirming.`;
+    return line;
+  }).join('\n');
+  return { text: `Found ${clusterInfos.length} duplicate group${clusterInfos.length>1?'s':''}:\n\n${lines}\n\nThis will delete ${totalDeletes} lead${totalDeletes>1?'s':''} total. Type YES to confirm or NO to cancel.`, totalDeletes };
+}
+function renderRecordView(config, record){
+  return config.viewFields.map(([label, accessor])=>{
+    const value = accessor(record);
+    return `${label}: ${(value===undefined||value===null||value==='') ? '—' : value}`;
+  }).join('\n');
+}
+async function resolveChatTarget(key, msg){
+  const config = CHAT_RECORD_CONFIG[key];
+  if(!config) return null;
+  const records = await config.db.getAll();
+  if(!records.length) return null;
+  const candidates = records.map(r=>({ id:r.id, label:config.label(r) }));
+  const intentOptions = config.supportsBulkDedupe ? '"view", "edit", "delete", "bulk_dedupe", "none"' : '"view", "edit", "delete", "none"';
+  const bulkDedupeNote = config.supportsBulkDedupe
+    ? ' Use "bulk_dedupe" when the user asks to clean up, merge, or remove duplicate leads IN GENERAL (e.g. "delete duplicates", "clean up duplicate leads", "merge duplicates") WITHOUT naming one specific lead — this is different from "delete", which is only for a single named record. When intent is "bulk_dedupe", matched_id and matched_label must both be null, since no single record is being matched.'
+    : '';
+  const result = await callClaude(
+    'You identify what a user wants to do with a record (view it, edit a field, or delete it), matched against a list of candidate records. Respond with ONLY valid JSON, no markdown fences, no explanation.',
+    `User message: "${msg}"\n\nCandidate records (id | label):\n${candidates.map(c=>`${c.id} | ${c.label}`).join('\n')}\n\nEditable fields for this record type (only relevant if intent is "edit"): ${config.editableFields.join(', ')}\n\nReturn JSON with exactly these keys: intent (one of ${intentOptions} — use "none" if the message isn't actually asking to view, change, or remove one of these records).${bulkDedupeNote} matched_id (the id string of the single candidate they mean, or null if unclear/no match/not applicable), matched_label (the label of the matched candidate, or null), field (only set when intent is "edit" — must be exactly one of the editable fields listed above, else null), new_value (only set when intent is "edit" — the new value as a plain string, else null).`
+  );
+  if(!result.ok){
+    // This was the actual gap: an API-level failure (rate limit, network
+    // blip, key issue) returned null exactly like a JSON-parse failure, but
+    // silently — no log at all, unlike the parse-failure path below which
+    // already logs. From the UI this looked identical to "Claude returned
+    // garbage" with zero way to tell the two apart.
+    console.error('resolveChatTarget: Claude call failed —', result.message);
+    return null;
+  }
+  const parsed = extractJsonObject(result.text);
+  if(parsed && parsed.intent==='edit' && (!parsed.field || !parsed.new_value)){
+    console.error('resolveChatTarget: edit intent but missing field/new_value —', result.text);
+  }
+  return parsed;
+}
+async function executeChatAction(key, pending){
+  const config = CHAT_RECORD_CONFIG[key];
+  if(pending.type === 'delete'){
+    const records = await config.db.getAll();
+    const record = records.find(r=>r.id===pending.id);
+    await config.remove(pending.id);
+    await config.afterChange();
+    return record ? config.label(record) : pending.label;
+  }
+  if(pending.type === 'edit'){
+    let value = pending.newValue;
+    if(config.numericFields && config.numericFields.includes(pending.field)){
+      const n = Number(value);
+      if(!Number.isNaN(n)) value = n;
+    }
+    await config.db.update(pending.id, { [pending.field]: value });
+    await config.afterChange();
+    return pending.label;
+  }
+  if(pending.type === 'bulk_dedupe'){
+    let deletedCount = 0;
+    for(const cluster of pending.clusters){
+      for(const id of cluster.deleteIds){
+        await deleteLeadCascade(id); // same cascade as the single-delete path — comm_log/proposals/followups included
+        deletedCount++;
+      }
+    }
     await refreshPipeline();
     await renderFollowupTable();
     await renderSavedProposals();
-    return lead ? `${lead.contact_name} from ${lead.business_name}` : pending.label;
-  }
-  if(pending.type === 'proposal'){
-    await ProposalsDB.remove(pending.id);
-    await renderSavedProposals();
-    return pending.label;
-  }
-  if(pending.type === 'followup'){
-    await FollowupsDB.remove(pending.id);
-    await renderFollowupTable();
-    return pending.label;
-  }
-  if(pending.type === 'callnote'){
-    await CallNotesDB.remove(pending.id);
-    await renderSavedCalls();
-    return pending.label;
+    return { deletedCount, groupCount: pending.clusters.length };
   }
   return pending.label;
 }
@@ -3270,18 +3675,28 @@ async function sendChatMessage(key){
   messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user">${escapeHtml(msg)}</div>`);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
-  if(chatPendingDelete[key]){
-    const pending = chatPendingDelete[key];
+  if(chatPendingAction[key]){
+    const pending = chatPendingAction[key];
     if(isConfirmReply(msg)){
-      delete chatPendingDelete[key];
-      const label = await executeChatDelete(pending);
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(label)} has been deleted.</div>`);
-      toast(`${label} has been deleted`,'success');
+      delete chatPendingAction[key];
+      const result = await executeChatAction(key, pending);
+      if(pending.type==='delete'){
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(result)} has been deleted.</div>`);
+        toast(`${result} has been deleted`,'success');
+      } else if(pending.type==='bulk_dedupe'){
+        const text = `Deleted ${result.deletedCount} duplicate lead${result.deletedCount>1?'s':''} across ${result.groupCount} group${result.groupCount>1?'s':''}.`;
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text)}</div>`);
+        toast(text,'success');
+      } else {
+        const text = `Updated ${pending.field} for ${result}.`;
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text)}</div>`);
+        toast(text,'success');
+      }
     } else if(isCancelReply(msg)){
-      delete chatPendingDelete[key];
+      delete chatPendingAction[key];
       messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Got it, no changes were made.</div>`);
     } else {
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Please reply YES to confirm the deletion or NO to cancel.</div>`);
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Please reply YES to confirm or NO to cancel.</div>`);
     }
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return;
@@ -3293,23 +3708,80 @@ async function sendChatMessage(key){
     return;
   }
 
-  if(looksLikeDeleteRequest(msg)){
+  const chatConfig = CHAT_RECORD_CONFIG[key];
+  if(chatConfig && looksLikeRecordAction(msg)){
     const loadingId1 = 'load-'+Date.now();
     messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai" id="${loadingId1}">Thinking...</div>`);
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    const match = await resolveDeleteTarget(key, msg);
+    const match = await resolveChatTarget(key, msg);
     document.getElementById(loadingId1).remove();
-    if(match && match.is_delete_request && match.matched_id){
-      chatPendingDelete[key] = { type: match.matched_type, id: match.matched_id, label: match.matched_label };
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildDeleteConfirmMessage(match))}</div>`);
+
+    if(!match){
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't tell what to change — try being more specific.</div>`);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return;
     }
-    if(match && match.is_delete_request && !match.matched_id){
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find a specific match for that — could you tell me the exact lead or business name?</div>`);
+    if(match.field && !chatConfig.editableFields.includes(match.field) && chatConfig.fieldSynonyms && chatConfig.fieldSynonyms[match.field.trim().toLowerCase()]){
+      match.field = chatConfig.fieldSynonyms[match.field.trim().toLowerCase()];
+    }
+    if(match.intent==='bulk_dedupe' && chatConfig.supportsBulkDedupe){
+      const leads = await chatConfig.db.getAll();
+      const clusterInfos = findDuplicateClusters(leads).map(buildDedupeClusterInfo);
+      if(!clusterInfos.length){
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">No duplicates found — your pipeline looks clean.</div>`);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return;
+      }
+      chatPendingAction[key] = {
+        type: 'bulk_dedupe', key,
+        clusters: clusterInfos.map(info => ({
+          keepId: info.keep.id,
+          deleteIds: info.toDelete.map(l=>l.id),
+          label: `${info.keep.business_name} (${info.keep.contact_name})`,
+        })),
+      };
+      const { text } = buildBulkDedupeConfirmMessage(clusterInfos);
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text).replace(/\n/g,'<br>')}</div>`);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return;
     }
+    if(match.intent==='delete' && match.matched_id){
+      chatPendingAction[key] = { type:'delete', key, id: match.matched_id, label: match.matched_label };
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildDeleteConfirmMessage(key, match))}</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    if(match.intent==='edit' && match.matched_id && match.field && chatConfig.editableFields.includes(match.field)){
+      const records = await chatConfig.db.getAll();
+      const record = records.find(r=>r.id===match.matched_id);
+      const oldValue = record ? record[match.field] : '';
+      chatPendingAction[key] = { type:'edit', key, id: match.matched_id, label: match.matched_label, field: match.field, newValue: match.new_value, oldValue };
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildEditConfirmMessage(match, oldValue))}</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    if(match.intent==='edit' && match.matched_id){
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I can't change that field through chat — try one of: ${escapeHtml(chatConfig.editableFields.join(', '))}.</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    if(match.intent==='view' && match.matched_id){
+      const records = await chatConfig.db.getAll();
+      const record = records.find(r=>r.id===match.matched_id);
+      if(record){
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(renderRecordView(chatConfig, record)).replace(/\n/g,'<br>')}</div>`);
+      } else {
+        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find that record anymore — it may have been deleted.</div>`);
+      }
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    if((match.intent==='delete' || match.intent==='edit' || match.intent==='view') && !match.matched_id){
+      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find a specific match for that — could you be more specific?</div>`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+    // intent === 'none' -> not actually a view/edit/delete request, fall through to the generic response below
   }
 
   const loadingId = 'load-'+Date.now();
