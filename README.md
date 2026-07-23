@@ -1,4 +1,4 @@
-# Social Practice AI — Sales Engine
+# Social Practice Sales Engine
 Built by Zane Zedan | Goldbar Certified EA
 AI-powered sales operations system for Social Practice / Mary Robb
 

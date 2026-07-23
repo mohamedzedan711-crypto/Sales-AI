@@ -38,7 +38,7 @@ function confirmationPage(status: 'connected' | 'error', message?: string): Resp
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${heading} — Social Practice AI</title>
+<title>${heading} — Social Practice Sales Engine</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;background:#1a1a2e;color:#fff;margin:0;height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;}
   .card{background:#22223a;padding:40px 36px;border-radius:16px;max-width:420px;margin:20px;}

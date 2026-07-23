@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Social Practice AI — Sales Engine</title>
+<title>Social Practice Sales Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -320,7 +320,7 @@ tr:hover td{background:var(--bg-secondary);}
 
 <nav>
   <div class="nav-left">
-    <div class="logo"><span class="dot"></span>SP AI</div>
+    <div class="logo"><span class="dot"></span>Social Practice Sales Engine</div>
     <div class="nav-tabs" id="navTabs">
       <div class="nav-tab active" data-tab="pipeline">Sales Pipeline</div>
       <div class="nav-tab" data-tab="inbox">Inbox Manager</div>
@@ -1652,7 +1652,7 @@ Never does: ${(profile.never_does||[]).join('; ') || 'n/a'}`;
 }
 async function buildSystemPrompt(roleInstructions){
   const voiceBlock = await getVoiceProfileBlock();
-  return `You are an AI assistant embedded in the Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
+  return `You are an AI assistant embedded in the Social Practice Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
 
 Write this in Mary's voice using the profile below. Match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
 ${voiceBlock}

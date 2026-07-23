@@ -18,7 +18,7 @@ Never does: ${(data.never_does || []).join('; ') || 'n/a'}`;
 }
 
 export function buildSystemPrompt(roleInstructions: string, voiceBlock: string): string {
-  return `You are an AI assistant embedded in the Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
+  return `You are an AI assistant embedded in the Social Practice Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
 
 Write this in Mary's voice using the profile below. Match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
 ${voiceBlock}
