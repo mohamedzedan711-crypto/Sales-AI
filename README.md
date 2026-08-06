@@ -1,6 +1,20 @@
 # Social Practice Sales Engine
 Built by Zane Zedan | Goldbar Certified EA
-AI-powered sales operations system for Social Practice / Mary Robb
+Sales operations system for Social Practice / Mary Robb
+
+This is a purely deterministic automation system — no LLM/AI calls anywhere,
+frontend or backend. HubSpot is the system of record; HubSpot Workflows send
+lead emails natively. This repo's backend automation (scoring, syncing,
+transcript logging, booking emails, meeting-prep briefs) is entirely
+rule-based and template-driven.
+
+Every automatic send the backend can trigger (questionnaire emails, booking
+confirmations, the HubSpot note push after a call transcript) is gated by a
+single kill switch — Settings → "Auto-Send / Auto-Respond", stored in
+Supabase, defaults to OFF. Nothing sends on its own until that's turned on.
+Changing it requires the same admin password as Settings → Integrations —
+the switch can't be flipped directly from the browser; it only goes through
+an admin-password-gated Edge Function.
 
 ## Setup
 1. Open index.html via local server
@@ -9,21 +23,20 @@ AI-powered sales operations system for Social Practice / Mary Robb
 4. Connect Supabase for live deployment
 
 ## Connections Available
-- Claude AI (Anthropic)
-- HubSpot
-- Monday.com (tracked alongside HubSpot — consolidating onto HubSpot alone is still an open decision Mary hasn't made yet)
+- HubSpot — the sole system of record for leads; HubSpot Workflows send lead emails natively
 - Gmail
-- Read.ai and Fathom (independent, both optional — Fathom is being introduced alongside Read.ai, not replacing it)
-- Otter.ai
+- Read.ai — the sole call-transcript source (Fathom support was removed entirely, backend and frontend)
 - Prospero
 - Supabase
 
-DM Manager (Instagram/Facebook/LinkedIn) works via paste-in, same as Inbox Manager — no API keys or "connections" involved. It drafts replies in Mary's voice; it is not a lead source. Leads only ever enter the pipeline through HubSpot.
-
-## Async Qualification Funnel + Voice Profile Backend
+## Async Qualification Funnel + Meeting-Prep Backend
 `index.html` and `questionnaire.html` are the frontend. The automation that
 sends questionnaire links, scores leads, sends booking emails, pulls call
 transcripts, and watches for reschedule replies runs as Supabase Edge
 Functions in `supabase/functions/*` — see [DEPLOYMENT.md](DEPLOYMENT.md) for
 the full setup (schema, secrets, deploy commands, cron schedule, webhook
-wiring). Nothing in that folder runs on its own until it's deployed.
+wiring, and the auto-send kill switch). Nothing in that folder runs on its
+own until it's deployed. Every email this backend sends uses a static
+template, lead scoring/reply classification are rule-based, and the
+meeting-prep brief is a templated document built from data already in the
+system — see DEPLOYMENT.md for specifics.

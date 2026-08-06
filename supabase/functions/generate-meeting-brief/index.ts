@@ -7,7 +7,6 @@
 // runtime — this function exists for the client-triggered case.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { requireCredential } from '../_shared/credentials.ts';
 import { generateMeetingPrepBrief } from '../_shared/meetingPrep.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -18,9 +17,8 @@ Deno.serve(async (req) => {
     if (!leadId) throw new Error('leadId is required');
 
     const supabaseAdmin = getSupabaseAdmin();
-    const anthropicCred = await requireCredential(supabaseAdmin, 'anthropic', 'Claude (Anthropic)');
 
-    const brief = await generateMeetingPrepBrief(supabaseAdmin, anthropicCred.value, leadId);
+    const brief = await generateMeetingPrepBrief(supabaseAdmin, leadId);
 
     return new Response(JSON.stringify({ ok: true, brief }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

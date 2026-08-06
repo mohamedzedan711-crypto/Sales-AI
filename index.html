@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -333,9 +332,6 @@ tr:hover td{background:var(--bg-secondary);}
     <div class="nav-tabs" id="navTabs">
       <div class="nav-tab active" data-tab="pipeline">Sales Pipeline</div>
       <div class="nav-tab" data-tab="inbox">Inbox Manager</div>
-      <div class="nav-tab" data-tab="dm">DM Manager</div>
-      <div class="nav-tab" data-tab="proposal">Proposal Builder</div>
-      <div class="nav-tab" data-tab="callnotes">Call Notes</div>
       <div class="nav-tab" data-tab="followup">Follow-Up Tracker</div>
       <div class="nav-tab" data-tab="settings">Settings</div>
     </div>
@@ -360,7 +356,6 @@ tr:hover td{background:var(--bg-secondary);}
       <div class="card-title">Active Leads</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
-        <button class="btn" id="btnSyncMonday" onclick="syncMonday()" style="display:none;">↻ Sync Monday</button>
         <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
       </div>
     </div>
@@ -396,30 +391,12 @@ tr:hover td{background:var(--bg-secondary);}
     </div>
   </div>
 
-  <div id="chat-container-pipeline"></div>
 </section>
 
 <!-- ============ TAB 2: INBOX MANAGER ============ -->
 <section class="tab-content" id="tab-inbox">
   <h1 class="page-title">Inbox Manager</h1>
-  <p class="page-sub">Paste any email and Claude drafts the reply in Mary's voice.</p>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Process an Email</div>
-      <button class="btn" id="btnConnectGmail" onclick="connectGmail()" style="display:none;">Connect Gmail</button>
-    </div>
-    <div class="form-row">
-      <label>Paste email content</label>
-      <textarea id="inboxPasteArea" rows="7" placeholder="Paste the full email content here, including sender info if available..."></textarea>
-      <div class="file-upload-row">
-        <label class="upload-btn">📎 Attach file (PDF / DOCX / TXT / image)<input type="file" id="inboxFileInput" style="display:none;" onchange="handleFileUpload('inboxFileInput','inboxPasteArea','inbox')"></label>
-        <span class="attach-tag hidden" id="inboxAttachTag"></span>
-      </div>
-    </div>
-    <button class="btn btn-pink" onclick="processInboxEmail()">Process with Claude</button>
-    <div id="inboxResult" style="margin-top:18px;"></div>
-  </div>
+  <p class="page-sub">Reschedule requests and email history for this pipeline.</p>
 
   <div id="gmailQueueCard" class="card hidden">
     <div class="card-header"><div class="card-title">Gmail — Prioritized Queue</div></div>
@@ -438,152 +415,6 @@ tr:hover td{background:var(--bg-secondary);}
     <div id="inboxHistoryEmpty" class="chat-empty">No emails processed yet.</div>
   </div>
 
-  <div id="chat-container-inbox"></div>
-</section>
-
-<!-- ============ TAB 3: DM MANAGER ============ -->
-<section class="tab-content" id="tab-dm">
-  <h1 class="page-title">DM Manager</h1>
-  <p class="page-sub">Instagram, Facebook, and LinkedIn DMs — drafted in Mary's voice, same job as Inbox Manager but for DMs. Not a lead source; leads only enter through HubSpot.</p>
-
-  <div class="subtabs" id="dmSubtabs">
-    <div class="subtab active" data-platform="Instagram">Instagram</div>
-    <div class="subtab" data-platform="Facebook">Facebook</div>
-    <div class="subtab" data-platform="LinkedIn">LinkedIn</div>
-  </div>
-
-  <div id="dmPlatformPanels"></div>
-
-  <div id="chat-container-dm"></div>
-</section>
-
-<!-- ============ TAB 4: PROPOSAL BUILDER ============ -->
-<section class="tab-content" id="tab-proposal">
-  <h1 class="page-title">Proposal Builder</h1>
-  <p class="page-sub">Paste discovery notes or a transcript — Claude builds the full deck.</p>
-
-  <div class="two-col">
-    <div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Discovery Notes</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn" id="btnLoadReadai" onclick="loadFromReadai()" style="display:none;">Load from Read.ai</button>
-            <button class="btn" id="btnLoadOtter" onclick="loadFromOtter()" style="display:none;">Load from Otter.ai</button>
-          </div>
-        </div>
-        <div class="form-row">
-          <textarea id="proposalNotes" rows="9" placeholder="Paste discovery call notes, a Read.ai transcript, or any raw notes about the prospect..."></textarea>
-          <div class="file-upload-row">
-            <label class="upload-btn">📎 Attach file (PDF / DOCX / TXT / image)<input type="file" id="proposalFileInput" style="display:none;" onchange="handleFileUpload('proposalFileInput','proposalNotes','proposal')"></label>
-            <span class="attach-tag hidden" id="proposalAttachTag"></span>
-          </div>
-        </div>
-        <button class="btn" onclick="analyzeProposalNotes()">Analyze Notes with Claude</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="margin-bottom:14px;">Prospect Details</div>
-        <div class="form-grid">
-          <div class="form-row"><label>Business Name</label><input type="text" id="pBusinessName"></div>
-          <div class="form-row"><label>Contact Name</label><input type="text" id="pContactName"></div>
-          <div class="form-row"><label>Practice Type</label>
-            <select id="pPracticeType"><option>Med Spa</option><option>Plastic Surgery</option><option>Dental</option><option>Other</option></select>
-          </div>
-          <div class="form-row"><label>Location</label><input type="text" id="pLocation"></div>
-          <div class="form-row"><label>Proposed Investment ($/mo)</label><input type="number" id="pInvestment"></div>
-          <div class="form-row"><label>Timeline</label><input type="text" id="pTimeline" placeholder="e.g. Start within 2 weeks"></div>
-        </div>
-        <div class="form-row"><label>Pain Points</label><textarea id="pPainPoints" rows="2"></textarea></div>
-        <div class="form-row"><label>Goals</label><textarea id="pGoals" rows="2"></textarea></div>
-        <div class="form-row"><label>Proposed Services</label><textarea id="pServices" rows="2"></textarea></div>
-        <button class="btn btn-pink" onclick="generateProposal()">Generate Proposal</button>
-      </div>
-    </div>
-
-    <div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Generated Proposal</div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm" onclick="copyProposal()">Copy Full Proposal</button>
-            <button class="btn btn-sm" onclick="generateClaudeDesignBrief()">Claude Design Brief</button>
-          </div>
-        </div>
-        <div id="proposalOutput" class="proposal-view"><p class="muted">Your generated proposal will appear here.</p></div>
-        <div id="proposalSaveRow" class="hidden" style="margin-top:16px;">
-          <button class="btn btn-navy" onclick="saveProposal()">Save Proposal</button>
-        </div>
-      </div>
-      <div id="claudeDesignBriefCard" class="card hidden">
-        <div class="card-header">
-          <div class="card-title">Claude Design Brief</div>
-          <button class="btn btn-sm" onclick="copyElementText('claudeDesignBriefOutput')">Copy Brief</button>
-        </div>
-        <p class="muted" style="font-size:12px;margin-bottom:12px;">Paste this into Claude Design to generate the proposal visual. Note: Claude Design can burn through usage quickly on accounts that aren't upgraded to a paid tier — check your plan before heavy iteration.</p>
-        <div id="claudeDesignBriefOutput" class="proposal-view"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><div class="card-title">Saved Proposals</div></div>
-    <div id="savedProposalsList"></div>
-    <div id="savedProposalsEmpty" class="chat-empty">No proposals saved yet.</div>
-  </div>
-
-  <div id="chat-container-proposal"></div>
-</section>
-
-<!-- ============ TAB: CALL NOTES ============ -->
-<section class="tab-content" id="tab-callnotes">
-  <h1 class="page-title">Call Notes</h1>
-  <p class="page-sub">Take live notes during a call and let Claude turn them into a structured summary.</p>
-  <p class="muted" style="font-size:12px;margin-top:-10px;margin-bottom:18px;">Use this if a call wasn't recorded automatically, or as a backup during setup — once Read.ai/Fathom and HubSpot are connected, call notes get pulled and logged to HubSpot on their own.</p>
-
-  <div class="two-col">
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px;">Live Note Taker</div>
-      <div class="form-grid">
-        <div class="form-row"><label>Lead Name</label>
-          <input type="text" id="clLeadName" list="callLeadOptions" placeholder="Select or type a lead name...">
-          <datalist id="callLeadOptions"></datalist>
-        </div>
-        <div class="form-row"><label>Call Type</label>
-          <select id="clCallType"><option>Discovery Call</option><option>Follow-Up Call</option><option>Check-In Call</option><option>Other</option></select>
-        </div>
-        <div class="form-row"><label>Call Date</label><input type="date" id="clCallDate"></div>
-        <div class="form-row"><label>Caller Name</label><input type="text" id="clCallerName" placeholder="Who you spoke with"></div>
-      </div>
-      <div class="form-row">
-        <label>Quick Notes</label>
-        <textarea id="clQuickNotes" rows="12" placeholder="Type bullet points as the call happens — anything said, questions asked, pain points mentioned, objections, next steps discussed..."></textarea>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <button class="btn" id="btnStartCallTimer" onclick="startCallTimer()">▶ Start Call Timer</button>
-        <span id="callTimerDisplay" style="font-weight:700;color:var(--pink);font-size:15px;">00:00</span>
-        <button class="btn btn-pink" onclick="processCallNotes()">Stop and Process</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px;">Processed Summary</div>
-      <div id="callSummaryOutput" class="proposal-view"><p class="muted">Your call summary will appear here once processed.</p></div>
-      <div id="callActionsRow" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
-        <button class="btn btn-navy btn-sm" onclick="sendCallToProposal()">Send to Proposal Builder</button>
-        <button class="btn btn-sm" onclick="logCallToHubspot()">Log to HubSpot</button>
-        <button class="btn btn-pink btn-sm" onclick="saveCallNotes()">Save Notes</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><div class="card-title">Saved Calls</div></div>
-    <div id="savedCallsList"></div>
-    <div id="savedCallsEmpty" class="chat-empty">No call notes saved yet.</div>
-  </div>
-
-  <div id="chat-container-callnotes"></div>
 </section>
 
 <!-- ============ TAB 5: FOLLOW-UP TRACKER ============ -->
@@ -607,25 +438,27 @@ tr:hover td{background:var(--bg-secondary);}
     </div>
   </div>
 
-  <div id="chat-container-followup"></div>
 </section>
 
 <!-- ============ TAB 6: SETTINGS ============ -->
 <section class="tab-content" id="tab-settings">
   <h1 class="page-title">Settings</h1>
-  <p class="page-sub">Connections, credentials, and Mary's voice profile — all in one place.</p>
+  <p class="page-sub">Connections, credentials, and the auto-send kill switch — all in one place.</p>
 
   <div class="settings-grid">
     <div>
-      <div class="card settings-accordion-item" id="acc-item-ai">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('ai')">
-          <div class="settings-section-title">🤖 AI</div>
+      <div class="card settings-accordion-item" id="acc-item-autosend">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('autosend')">
+          <div class="settings-section-title">🚦 Auto-Send / Auto-Respond</div>
           <span class="accordion-chevron">▸</span>
         </div>
-        <div class="settings-accordion-body hidden" id="acc-body-ai">
-          <div class="form-row"><label>Anthropic API Key <span id="badge-anthropic_key"></span></label>
-            <input type="password" id="anthropic_key" placeholder="sk-ant-..."></div>
-          <button class="btn btn-pink btn-sm" onclick="saveSetting('anthropic_key')">Save</button>
+        <div class="settings-accordion-body hidden" id="acc-body-autosend">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Master switch for every automatic send this system can trigger on its own — questionnaire emails, booking confirmation emails, and the HubSpot note push after a call transcript. While OFF, all of those are skipped and logged in Automation Activity below instead of sending. Starts OFF. Stored in Supabase, so it persists across redeploys. Gated behind the same admin password as Settings → Integrations below — enter it there first, or the toggle will reject the change.</p>
+          <label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer;">
+            <input type="checkbox" id="auto_send_enabled" onchange="saveAutoSendSetting()">
+            <span id="autoSendStatusLabel">Auto-Send / Auto-Respond: OFF</span>
+          </label>
+          <div id="autoSendStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
         </div>
       </div>
 
@@ -642,10 +475,6 @@ tr:hover td{background:var(--bg-secondary);}
             <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
           </div>
           <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
-          <div class="form-row" style="margin-top:14px;"><label>Monday.com API Key <span id="badge-monday_key"></span></label>
-            <input type="password" id="monday_key"></div>
-          <button class="btn btn-sm" onclick="saveSetting('monday_key')">Save</button>
-          <p class="muted" style="font-size:11.5px;margin-top:10px;">⚠️ Consolidating onto HubSpot alone is still an open decision — Mary currently runs both HubSpot and Monday.com and knows they're duplicated, but that isn't settled yet. Both stay trackable here until she decides.</p>
         </div>
       </div>
 
@@ -682,33 +511,6 @@ tr:hover td{background:var(--bg-secondary);}
         </div>
       </div>
 
-      <div class="card settings-accordion-item" id="acc-item-voice">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('voice')">
-          <div class="settings-section-title">🎙️ Mary's Voice Profile</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-voice">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Paste real emails Mary has written, then generate a structured profile. Every email and DM the app drafts will use this automatically.</p>
-          <div id="voiceSamplesList"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-            <button class="btn btn-sm" onclick="addVoiceSample()">+ Add Another Sample</button>
-            <button class="btn btn-pink btn-sm" onclick="generateVoiceProfile()">Generate Voice Profile</button>
-          </div>
-          <div id="voiceProfileConfidence" class="muted" style="font-size:12px;margin-top:8px;"></div>
-
-          <div class="section-label">Structured Profile (editable — this is the source of truth)</div>
-          <div class="form-row"><label>Tone Summary</label><input type="text" id="vp_tone_summary" placeholder="e.g. Warm, confident, upbeat"></div>
-          <div class="form-row"><label>Energy Level</label><input type="text" id="vp_energy_level" placeholder="calm / warm / high-energy / direct"></div>
-          <div class="form-row"><label>Formality Level</label><input type="text" id="vp_formality_level" placeholder="e.g. Professional but conversational"></div>
-          <div class="form-row"><label>Common Openers (one per line)</label><textarea id="vp_common_openers" rows="3"></textarea></div>
-          <div class="form-row"><label>Common Closers (one per line)</label><textarea id="vp_common_closers" rows="3"></textarea></div>
-          <div class="form-row"><label>Signature Phrases (one per line)</label><textarea id="vp_signature_phrases" rows="3"></textarea></div>
-          <div class="form-row"><label>Never Does (one per line)</label><textarea id="vp_never_does" rows="3"></textarea></div>
-
-          <button class="btn btn-pink btn-sm" onclick="saveVoiceProfile()">Save Voice Profile</button>
-          <div id="voiceProfileStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-        </div>
-      </div>
     </div>
 
     <div>
@@ -726,17 +528,6 @@ tr:hover td{background:var(--bg-secondary);}
         </div>
       </div>
 
-      <div class="card settings-accordion-item" id="acc-item-phone">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('phone')">
-          <div class="settings-section-title">📱 Phone Calls</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-phone">
-          <div class="form-row"><label>Otter.ai API Key <span id="badge-otter_key"></span></label><input type="password" id="otter_key"></div>
-          <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at otter.ai/api</div>
-          <button class="btn btn-sm" onclick="saveSetting('otter_key')">Save</button>
-        </div>
-      </div>
 
       <div class="card settings-accordion-item" id="acc-item-database">
         <div class="settings-accordion-header" onclick="toggleSettingsAccordion('database')">
@@ -805,17 +596,11 @@ tr:hover td{background:var(--bg-secondary);}
 const STAGES = ["New Lead","Nurturing","Discovery Booked","Discovery Done","Proposal Sent","Agreement Sent","Signed","Lost"];
 const SOURCES = ["HubSpot","Referral","Website","Cold Outreach","Other"];
 const PRACTICE_TYPES = ["Med Spa","Plastic Surgery","Dental","Other"];
-const MODEL = "claude-sonnet-4-6";
 
 let supabaseClient = null;
 let CONFIG = { supabase: { enabled: false } };
-let currentDmPlatform = "Instagram";
 let expandedLeadId = null;
 let currentProposalLeadId = null;
-let chatHistories = { pipeline: [], inbox: [], dm: [], proposal: [], followup: [] };
-let lastInboxProcessed = null;
-let dmAttachments = {};
-let genericAttachments = {};
 
 /* ===================== UTIL ===================== */
 function uuid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c=='x'?r:(r&0x3|0x8)).toString(16);})); }
@@ -921,7 +706,6 @@ const LeadsDB = makeTable('leads','sp_leads');
 const CommLogDB = makeTable('comm_log','sp_comm_log');
 const ProposalsDB = makeTable('proposals','sp_proposals');
 const FollowupsDB = makeTable('followups','sp_followups');
-const DmLogDB = makeTable('dm_log','sp_dm_log');
 const CallNotesDB = makeTable('call_notes','sp_call_notes');
 
 /* ===================== HUBSPOT ===================== */
@@ -1145,109 +929,6 @@ async function syncStageToHubspot(lead, stage){
   catch(e){ console.warn('HubSpot deal stage update failed:', e); }
 }
 
-/* ===================== MARY'S VOICE PROFILE ===================== */
-let voiceSampleSeq = 0;
-let cachedVoiceProfile = null;
-
-function addVoiceSample(prefillValue){
-  voiceSampleSeq++;
-  const id = 'voiceSample'+voiceSampleSeq;
-  document.getElementById('voiceSamplesList').insertAdjacentHTML('beforeend', `
-    <div class="form-row" id="wrap-${id}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <label style="margin:0;">Sample Email</label>
-        <button type="button" class="btn btn-sm btn-delete-x" onclick="removeVoiceSample('${id}')">✕</button>
-      </div>
-      <textarea id="${id}" rows="5" placeholder="Paste a real email Mary wrote...">${prefillValue ? escapeHtml(prefillValue) : ''}</textarea>
-    </div>`);
-}
-function removeVoiceSample(id){
-  const el = document.getElementById('wrap-'+id);
-  if(el) el.remove();
-}
-function getVoiceSamples(){
-  return Array.from(document.querySelectorAll('#voiceSamplesList textarea')).map(t=>t.value.trim()).filter(Boolean);
-}
-async function generateVoiceProfile(){
-  const samples = getVoiceSamples();
-  if(!samples.length){ toast('Add at least one sample email first.','error'); return; }
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){ toast('Add your Anthropic API key in Settings to generate a voice profile.','error'); return; }
-  toast('Analyzing samples with Claude...');
-  const result = await callClaude(
-    'You are analyzing real email samples to build a structured voice profile for Mary. Extract patterns, do not invent anything not evidenced in the samples.',
-    `Email samples:\n\n${samples.map((s,i)=>`--- Sample ${i+1} ---\n${s}`).join('\n\n')}\n\nOutput ONLY valid JSON (no markdown fences) with exactly these keys:\ntone_summary: one line\nenergy_level: calm / warm / high-energy / direct — pick what fits\nformality_level: one line\ncommon_openers: array of strings — how she typically opens an email\ncommon_closers: array of strings — how she typically signs off\nsignature_phrases: array of strings — words or phrases she repeats across samples\nnever_does: array of strings — things notably absent (no jargon, no exclamation points, etc.)\nconfidence: "low" if fewer than 3 samples were provided, otherwise "normal"`
-  );
-  if(!result.ok){ toast(result.message,'error'); return; }
-  try{
-    const parsed = JSON.parse(stripJsonFence(result.text));
-    document.getElementById('vp_tone_summary').value = parsed.tone_summary || '';
-    document.getElementById('vp_energy_level').value = parsed.energy_level || '';
-    document.getElementById('vp_formality_level').value = parsed.formality_level || '';
-    document.getElementById('vp_common_openers').value = (parsed.common_openers||[]).join('\n');
-    document.getElementById('vp_common_closers').value = (parsed.common_closers||[]).join('\n');
-    document.getElementById('vp_signature_phrases').value = (parsed.signature_phrases||[]).join('\n');
-    document.getElementById('vp_never_does').value = (parsed.never_does||[]).join('\n');
-    const confEl = document.getElementById('voiceProfileConfidence');
-    confEl.textContent = (parsed.confidence==='low' || samples.length<3)
-      ? 'Profile confidence: low (fewer than 3 samples provided). Add more samples and regenerate for a stronger profile.'
-      : 'Profile generated — review the fields below, then Save.';
-    toast('Voice profile generated — review and save.','success');
-  }catch(e){
-    toast("Could not parse Claude's response as a structured profile. Try again.",'error');
-  }
-}
-async function saveVoiceProfile(){
-  const profile = {
-    raw_samples: getVoiceSamples(),
-    tone_summary: document.getElementById('vp_tone_summary').value.trim(),
-    energy_level: document.getElementById('vp_energy_level').value.trim(),
-    formality_level: document.getElementById('vp_formality_level').value.trim(),
-    common_openers: document.getElementById('vp_common_openers').value.split('\n').map(s=>s.trim()).filter(Boolean),
-    common_closers: document.getElementById('vp_common_closers').value.split('\n').map(s=>s.trim()).filter(Boolean),
-    signature_phrases: document.getElementById('vp_signature_phrases').value.split('\n').map(s=>s.trim()).filter(Boolean),
-    never_does: document.getElementById('vp_never_does').value.split('\n').map(s=>s.trim()).filter(Boolean),
-    last_updated: new Date().toISOString()
-  };
-  localStorage.setItem('voice_profile_cache', JSON.stringify(profile));
-  cachedVoiceProfile = profile;
-  if(supabaseClient){
-    const { error } = await supabaseClient.from('voice_profile').upsert({ id:1, ...profile });
-    if(error){ toast('Saved locally, but Supabase save failed: '+error.message,'error'); return; }
-  }
-  toast('Voice profile saved.','success');
-  document.getElementById('voiceProfileStatus').textContent = `Saved ${new Date().toLocaleString()}.`;
-}
-async function getVoiceProfileData(){
-  if(supabaseClient){
-    const { data, error } = await supabaseClient.from('voice_profile').select('*').eq('id',1).maybeSingle();
-    if(!error && data && (data.tone_summary || (data.raw_samples||[]).length)){ cachedVoiceProfile = data; return data; }
-  }
-  if(cachedVoiceProfile) return cachedVoiceProfile;
-  const raw = localStorage.getItem('voice_profile_cache');
-  if(raw){ try{ cachedVoiceProfile = JSON.parse(raw); return cachedVoiceProfile; }catch(e){} }
-  return null;
-}
-async function loadVoiceProfileIntoSettings(){
-  const profile = await getVoiceProfileData();
-  document.getElementById('voiceSamplesList').innerHTML = '';
-  voiceSampleSeq = 0;
-  if(!profile){ addVoiceSample(); return; }
-  document.getElementById('vp_tone_summary').value = profile.tone_summary || '';
-  document.getElementById('vp_energy_level').value = profile.energy_level || '';
-  document.getElementById('vp_formality_level').value = profile.formality_level || '';
-  document.getElementById('vp_common_openers').value = (profile.common_openers||[]).join('\n');
-  document.getElementById('vp_common_closers').value = (profile.common_closers||[]).join('\n');
-  document.getElementById('vp_signature_phrases').value = (profile.signature_phrases||[]).join('\n');
-  document.getElementById('vp_never_does').value = (profile.never_does||[]).join('\n');
-  if(profile.raw_samples && profile.raw_samples.length){
-    profile.raw_samples.forEach(s=>addVoiceSample(s));
-  } else {
-    addVoiceSample();
-  }
-  if(profile.last_updated) document.getElementById('voiceProfileStatus').textContent = `Last saved ${new Date(profile.last_updated).toLocaleString()}.`;
-}
-
 /* ===================== SETTINGS ===================== */
 /* Exclusive accordion — only one section's body visible at a time, all
    collapsed by default. This toggles display via a CSS class only, never
@@ -1274,8 +955,8 @@ function saveSetting(key){
   refreshConnectionSlots();
 }
 function loadSettingsIntoForm(){
-  ['anthropic_key','hubspot_key','monday_key','gmail_key','mary_email','reply_name',
-   'readai_key','otter_key','prospero_key'].forEach(k=>{
+  ['hubspot_key','gmail_key','mary_email','reply_name',
+   'readai_key','prospero_key'].forEach(k=>{
     const el = document.getElementById(k);
     if(el) el.value = localStorage.getItem(k) || '';
   });
@@ -1283,10 +964,9 @@ function loadSettingsIntoForm(){
   document.getElementById('supabase_anon_key').value = getSupabaseAnonKey();
   document.getElementById('supabase_enabled').checked = localStorage.getItem('supabase_enabled') !== 'false';
   refreshConnectionBadges();
-  loadVoiceProfileIntoSettings();
 }
 function refreshConnectionBadges(){
-  ['anthropic_key','hubspot_key','monday_key','gmail_key','readai_key','otter_key','prospero_key'].forEach(k=>{
+  ['hubspot_key','gmail_key','readai_key','prospero_key'].forEach(k=>{
     const badge = document.getElementById('badge-'+k);
     if(!badge) return;
     const has = !!localStorage.getItem(k);
@@ -1333,12 +1013,9 @@ function updateHubspotStatusUI(){
 }
 function renderConnStatusTable(){
   const items = [
-    ['Claude AI (Anthropic)','anthropic_key','anthropic'],
     ['HubSpot','hubspot_key','hubspot'],
-    ['Monday.com','monday_key','monday'],
     ['Gmail','gmail_key',null],
     ['Read.ai','readai_key','readai'],
-    ['Otter.ai','otter_key',null],
     ['Prospero','prospero_key',null],
   ];
   let html = '';
@@ -1386,10 +1063,8 @@ async function testSupabaseConnection(){
 }
 /* ===================== INTEGRATIONS PANEL (backend automation credentials) ===================== */
 const INTEGRATION_KEYS = [
-  { key:'anthropic', label:'Anthropic (Claude)' },
   { key:'hubspot', label:'HubSpot' },
-  { key:'readai', label:'Read.ai' },
-  { key:'fathom', label:'Fathom' }
+  { key:'readai', label:'Read.ai' }
 ];
 function integrationsFunctionsBase(){
   const url = getSupabaseUrl();
@@ -1592,6 +1267,57 @@ function handleGmailOAuthRedirect(){
   history.replaceState({}, '', location.pathname);
 }
 
+/* ===================== AUTO-SEND KILL SWITCH ===================== */
+function updateAutoSendLabel(enabled){
+  const label = document.getElementById('autoSendStatusLabel');
+  if(label) label.textContent = `Auto-Send / Auto-Respond: ${enabled ? 'ON' : 'OFF'}`;
+}
+async function loadAutoSendSetting(){
+  const status = document.getElementById('autoSendStatus');
+  const checkbox = document.getElementById('auto_send_enabled');
+  if(!status || !checkbox) return;
+  if(!supabaseClient){
+    status.textContent = 'Connect Supabase above to control this — the setting (and every backend function that checks it) reads this from Supabase, not from this browser.';
+    checkbox.checked = false;
+    updateAutoSendLabel(false);
+    return;
+  }
+  const { data, error } = await supabaseClient.from('system_settings').select('*').eq('id',1).maybeSingle();
+  const enabled = !!(data && data.auto_send_enabled);
+  checkbox.checked = enabled;
+  updateAutoSendLabel(enabled);
+  status.textContent = error ? 'Could not load this setting from Supabase.'
+    : data?.updated_at ? `Last changed ${new Date(data.updated_at).toLocaleString()}.` : '';
+}
+async function saveAutoSendSetting(){
+  const checkbox = document.getElementById('auto_send_enabled');
+  const status = document.getElementById('autoSendStatus');
+  const enabled = checkbox.checked;
+  const revert = ()=>{ checkbox.checked = !enabled; updateAutoSendLabel(!enabled); };
+
+  const base = integrationsFunctionsBase();
+  if(!base){ toast('Connect Supabase in the Database section above first — this setting is stored there.','error'); revert(); return; }
+  const password = getAdminPassword();
+  if(!password){ toast('Enter the admin password in Settings → Integrations first — it gates this switch too.','error'); revert(); return; }
+
+  try{
+    const res = await fetch(`${base}/set-auto-send`, {
+      method:'POST',
+      headers: integrationsAuthHeaders(),
+      body: JSON.stringify({ enabled, admin_password: password })
+    });
+    const data = await res.json();
+    if(res.status===401){ toast('Invalid admin password.','error'); revert(); return; }
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    localStorage.setItem('admin_panel_password', password);
+    updateAutoSendLabel(enabled);
+    if(status) status.textContent = `Last changed ${new Date().toLocaleString()}.`;
+    toast(enabled ? 'Auto-Send is now ON — automatic sends are live.' : 'Auto-Send is now OFF — automatic sends will be skipped.','success');
+  }catch(e){
+    toast('Could not save: '+e.message,'error');
+    revert();
+  }
+}
 async function loadQualificationConfig(){
   const status = document.getElementById('qualificationConfigStatus');
   if(!status) return;
@@ -1624,7 +1350,7 @@ async function migrateToSupabase(){
   progress.classList.remove('hidden');
   const tables = [
     ['leads','sp_leads'],['comm_log','sp_comm_log'],['proposals','sp_proposals'],
-    ['followups','sp_followups'],['dm_log','sp_dm_log'],['call_notes','sp_call_notes']
+    ['followups','sp_followups'],['call_notes','sp_call_notes']
   ];
   let done=0;
   for(const [table,storageKey] of tables){
@@ -1642,255 +1368,6 @@ async function migrateToSupabase(){
   initSupabase();
   progress.textContent = 'All data has been migrated to Supabase. Reads and writes now go to Supabase.';
   toast('Migration complete.','success');
-}
-
-/* ===================== CLAUDE ENGINE ===================== */
-async function getVoiceProfileBlock(){
-  const profile = await getVoiceProfileData();
-  const hasProfile = profile && (profile.tone_summary || (profile.raw_samples && profile.raw_samples.length));
-  if(!hasProfile){
-    return 'No voice profile has been created yet in Settings. Flag this at the top of the draft instead of guessing at Mary\'s tone (e.g. "No voice profile on file yet — using a neutral professional tone.").';
-  }
-  return `Tone: ${profile.tone_summary || 'n/a'}
-Energy: ${profile.energy_level || 'n/a'}
-Formality: ${profile.formality_level || 'n/a'}
-Common openers: ${(profile.common_openers||[]).join('; ') || 'n/a'}
-Common closers: ${(profile.common_closers||[]).join('; ') || 'n/a'}
-Signature phrases: ${(profile.signature_phrases||[]).join('; ') || 'n/a'}
-Never does: ${(profile.never_does||[]).join('; ') || 'n/a'}`;
-}
-async function buildSystemPrompt(roleInstructions){
-  const voiceBlock = await getVoiceProfileBlock();
-  return `You are an AI assistant embedded in the Social Practice Sales Engine used by Mary Robb, founder of Social Practice, a boutique social media marketing agency based in Dallas, TX serving the medical aesthetics industry (med spas, plastic surgery practices, cosmetic dentistry).
-
-Write this in Mary's voice using the profile below. Match her tone, energy, formality, openers/closers, and phrasing. Do not sound generic or corporate. If no voice profile exists yet, flag that in the draft instead of guessing.
-${voiceBlock}
-
-${roleInstructions || ''}
-
-Rules:
-- Never write generic, placeholder, or templated content. Always be specific to the exact context and details given.
-- Never use bracket placeholders like [Name] or [Business]. Use the real details provided.
-- Write like a real person, not a robot.
-- Never use em dashes (—) or en dashes used as sentence connectors. Use periods, commas, or "and"/"but" instead.
-- Avoid other AI-sounding patterns: no "I hope this finds you well," no triple-adjective lists, no overly symmetric sentence structures, no starting multiple sentences in a row with the same word.
-- Write the way a busy, real person actually types, with a slightly imperfect rhythm, varied sentence length, and nothing that reads like polished editorial copy.`;
-}
-
-async function callClaude(systemPrompt, userContent, opts={}){
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){
-    return { ok:false, needsKey:true, message: "Add your Anthropic API key in Settings to enable AI features. You can still use the system manually." };
-  }
-  const messages = [{ role:'user', content: userContent }];
-  try{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': key,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: opts.maxTokens || 2200,
-        system: systemPrompt,
-        messages
-      })
-    });
-    const data = await res.json();
-    if(!res.ok || data.error){
-      return { ok:false, message: (data.error && data.error.message) || 'Claude request failed.' };
-    }
-    const text = (data.content || []).map(c=>c.text || '').join('\n').trim();
-    return { ok:true, text: stripAiDashes(text) };
-  }catch(e){
-    return { ok:false, message: 'Could not reach Claude directly from the browser (' + e.message + '). In production this call would route through a backend proxy.' };
-  }
-}
-
-// Belt-and-suspenders safety net: prompting alone doesn't guarantee Claude
-// never slips an em dash in, so every response gets swept here too. Only
-// touches em dashes and SPACED en dashes (a connector, e.g. "world — but")
-// — a tight en dash with no surrounding spaces (a number range, e.g.
-// "$1,000–$2,500/mo") is left alone. Not grammar-aware on purpose: picks
-// a period before a capital letter, a comma otherwise.
-function stripAiDashes(text){
-  if(!text) return text;
-  const replaceConnector = (match, offset, str) => {
-    const after = str.slice(offset + match.length).trimStart();
-    return /^[A-Z]/.test(after) ? '. ' : ', ';
-  };
-  return text
-    .replace(/\s*—\s*/g, replaceConnector)
-    .replace(/\s+–\s+/g, replaceConnector)
-    .replace(/ {2,}/g, ' ')
-    .trim();
-}
-
-function stripJsonFence(text){
-  return text.replace(/```json/gi,'').replace(/```/g,'').trim();
-}
-// Scans for balanced {...} blocks and returns the LAST one found. Claude
-// puts its actual answer after any explanatory prose, and prose can contain
-// its own stray "{" (e.g. referencing "the {field} value" conversationally)
-// — a naive first-"{"-to-last-"}" regex breaks the moment that happens,
-// because it spans from the prose's brace all the way to the real answer's
-// closing brace, producing an invalid blob. Balanced-brace scanning finds
-// each self-contained {...} block independently and keeps the last one,
-// which is reliably Claude's actual answer.
-function findLastJsonObject(text){
-  let best = null;
-  for(let i=0;i<text.length;i++){
-    if(text[i] !== '{') continue;
-    let depth = 0;
-    for(let j=i;j<text.length;j++){
-      if(text[j]==='{') depth++;
-      else if(text[j]==='}'){
-        depth--;
-        if(depth===0){ best = text.slice(i,j+1); break; }
-      }
-    }
-  }
-  return best;
-}
-// stripJsonFence only strips markdown code fences — it does nothing if Claude
-// prepends/appends prose around the JSON despite being told not to (a common
-// LLM behavior, not a hypothetical). This tries the direct parse first, then
-// falls back to the balanced-brace scan above before giving up, so a stray
-// lead-in sentence (or a stray brace inside one) doesn't silently break
-// every caller downstream.
-function extractJsonObject(text){
-  try{ return JSON.parse(stripJsonFence(text)); }
-  catch(e){
-    const block = findLastJsonObject(stripJsonFence(text));
-    if(block){
-      try{ return JSON.parse(block); }
-      catch(e2){ /* fall through to the log below */ }
-    }
-    console.error('Could not parse JSON from Claude response:', text);
-    return null;
-  }
-}
-
-/* ===================== FILE UPLOAD / EXTRACTION ===================== */
-if(window.pdfjsLib){
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-function readFileAsText(file){
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = ()=>resolve(r.result);
-    r.onerror = reject;
-    r.readAsText(file);
-  });
-}
-function readFileAsArrayBuffer(file){
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = ()=>resolve(r.result);
-    r.onerror = reject;
-    r.readAsArrayBuffer(file);
-  });
-}
-function readFileAsBase64(file){
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = ()=>resolve(r.result.split(',')[1]);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-async function extractPdfText(file){
-  const buf = await readFileAsArrayBuffer(file);
-  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
-  let text = '';
-  for(let i=1;i<=pdf.numPages;i++){
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(it=>it.str).join(' ') + '\n';
-  }
-  return text.trim();
-}
-async function extractDocxText(file){
-  const buf = await readFileAsArrayBuffer(file);
-  const bytes = new Uint8Array(buf);
-  const dv = new DataView(buf);
-  let eocd = -1;
-  for(let i=bytes.length-22;i>=0;i--){
-    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
-  }
-  if(eocd===-1) throw new Error('Not a valid .docx file');
-  const cdOffset = dv.getUint32(eocd+16,true);
-  const cdEntries = dv.getUint16(eocd+10,true);
-  let offset = cdOffset, target=null;
-  for(let i=0;i<cdEntries;i++){
-    if(dv.getUint32(offset,true)!==0x02014b50) break;
-    const compMethod = dv.getUint16(offset+10,true);
-    const compSize = dv.getUint32(offset+20,true);
-    const nameLen = dv.getUint16(offset+28,true);
-    const extraLen = dv.getUint16(offset+30,true);
-    const commentLen = dv.getUint16(offset+32,true);
-    const localHeaderOffset = dv.getUint32(offset+42,true);
-    const name = new TextDecoder().decode(bytes.slice(offset+46, offset+46+nameLen));
-    if(name==='word/document.xml'){ target = {compMethod,compSize,localHeaderOffset}; }
-    offset += 46+nameLen+extraLen+commentLen;
-  }
-  if(!target) throw new Error('document.xml not found in docx');
-  const lh = target.localHeaderOffset;
-  const lhNameLen = dv.getUint16(lh+26,true);
-  const lhExtraLen = dv.getUint16(lh+28,true);
-  const dataStart = lh+30+lhNameLen+lhExtraLen;
-  const compData = bytes.slice(dataStart, dataStart+target.compSize);
-  let xmlBytes;
-  if(target.compMethod===0){ xmlBytes = compData; }
-  else{
-    const stream = new Blob([compData]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-    xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
-  }
-  const xml = new TextDecoder().decode(xmlBytes);
-  return xml.replace(/<w:p[ >]/g,'\n$&').replace(/<[^>]+>/g,'').replace(/\n{2,}/g,'\n').trim();
-}
-async function handleFileUpload(inputId, textareaId, storeKey){
-  const input = document.getElementById(inputId);
-  const file = input.files[0];
-  if(!file) return;
-  const tag = document.getElementById(
-    inputId==='inboxFileInput' ? 'inboxAttachTag' :
-    inputId==='proposalFileInput' ? 'proposalAttachTag' : null
-  );
-  try{
-    if(file.type.startsWith('image/')){
-      const b64 = await readFileAsBase64(file);
-      genericAttachments[storeKey] = { type:'image', media_type:file.type, data:b64 };
-      if(tag){ tag.textContent = '🖼 '+file.name+' attached as image context'; tag.classList.remove('hidden'); }
-      toast('Image attached — it will be used as context for the next Claude call.','success');
-      return;
-    }
-    let text = '';
-    if(file.name.toLowerCase().endsWith('.pdf')){ text = await extractPdfText(file); }
-    else if(file.name.toLowerCase().endsWith('.docx')){ text = await extractDocxText(file); }
-    else{ text = await readFileAsText(file); }
-    const ta = document.getElementById(textareaId);
-    ta.value = (ta.value ? ta.value+'\n\n' : '') + text;
-    delete genericAttachments[storeKey];
-    if(tag){ tag.textContent = '📄 '+file.name+' — text extracted and added below'; tag.classList.remove('hidden'); }
-    toast('File content added.','success');
-  }catch(e){
-    toast('Could not read file: '+e.message,'error');
-  }
-  input.value = '';
-}
-function buildUserContent(promptText, storeKey){
-  const att = genericAttachments[storeKey];
-  if(att && att.type==='image'){
-    return [
-      { type:'image', source:{ type:'base64', media_type: att.media_type, data: att.data } },
-      { type:'text', text: promptText }
-    ];
-  }
-  return promptText;
 }
 
 /* ===================== MODAL SYSTEM ===================== */
@@ -1917,34 +1394,20 @@ function copyElementText(id){
   navigator.clipboard.writeText(el.innerText).then(()=>toast('Copied to clipboard.','success'));
 }
 
-/* ===================== AI DRAFT MODAL (generic) ===================== */
-async function openAIDraftModal(title, systemPrompt, userPrompt, leadId, afterSaveCb){
-  window.__lastAiDraftText = null;
-  openModal(title, `<div class="ai-loading">Drafting with Claude...</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){
-    updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>
-      <textarea id="aiDraftText" rows="12" placeholder="Write the message manually..."></textarea>`);
-    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="aiDraftSendBtn" onclick="sendAIDraftEmail('${leadId}')">Send</button><button class="btn" onclick="closeModal()">Close</button>`);
-    return;
-  }
-  const result = await callClaude(systemPrompt, userPrompt);
-  if(!result.ok){
-    updateModalBody(`<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`);
-    return;
-  }
-  window.__lastAiDraftText = result.text;
-  updateModalBody(`<textarea id="aiDraftText" rows="14">${escapeHtml(result.text)}</textarea>`);
-  let footer = `<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button>`;
-  footer += `<button class="btn btn-pink" id="aiDraftSendBtn" onclick="sendAIDraftEmail('${leadId}')">Send</button>`;
-  if(afterSaveCb) footer += `<button class="btn btn-pink" onclick="(${afterSaveCbWrapperName})()">Mark as Sent</button>`;
-  footer += `<button class="btn" onclick="closeModal()">Close</button>`;
-  updateModalFooter(footer);
-  if(afterSaveCb){
-    window.__aiDraftAfterSave = afterSaveCb;
-  }
+/* ===================== MANUAL DRAFT MODAL (generic) ===================== */
+/* No AI drafting — the user writes the message themselves. Kept as a shared
+   modal (rather than removing Nurture/Recap/Follow-Up/Reactivate/Book-Call
+   outright) so the lead-context reference panel, Copy, and Send-via-Gmail
+   plumbing stay in one place. */
+function openManualDraftModal(title, leadId, commType, contextText){
+  const body = `
+    <div class="section-label">Lead Context</div>
+    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;white-space:pre-wrap;font-size:13px;">${escapeHtml(contextText||'')}</div>
+    <textarea id="aiDraftText" rows="12" placeholder="Write the message (optionally start with a &quot;Subject: ...&quot; line)..."></textarea>`;
+  const footer = `<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="aiDraftSendBtn" onclick="sendAIDraftEmail('${leadId}','${commType}')">Send</button><button class="btn" onclick="closeModal()">Close</button>`;
+  openModal(title, body, footer);
 }
-async function sendAIDraftEmail(leadId){
+async function sendAIDraftEmail(leadId, commType){
   const draftEl = document.getElementById('aiDraftText');
   if(!draftEl) return;
   const raw = draftEl.value;
@@ -1967,19 +1430,19 @@ async function sendAIDraftEmail(leadId){
     });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    if(data.skipped){
+      toast('Auto-Send is OFF in Settings — this email was not sent.','error');
+      if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+      return;
+    }
     toast('Email sent.','success');
     closeModal();
+    if(commType) await logComm(leadId, commType, subject, body);
     await refreshPipeline();
   }catch(e){
     toast('Could not send the email — is send-lead-email deployed and Gmail connected? ('+e.message+')','error');
     if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
   }
-}
-const afterSaveCbWrapperName = '__runAiDraftAfterSave';
-function __runAiDraftAfterSave(){
-  const text = document.getElementById('aiDraftText').value;
-  if(window.__aiDraftAfterSave) window.__aiDraftAfterSave(text);
-  closeModal();
 }
 
 /* ===================== THEME + DATE ===================== */
@@ -2008,9 +1471,8 @@ function switchTab(name){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  if(name==='callnotes') initCallNotesTab();
   if(name==='inbox') renderRescheduleFlags();
-  if(name==='settings'){ loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures(); }
+  if(name==='settings'){ loadAutoSendSetting(); loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures(); }
 }
 
 /* ===================== SEED DATA ===================== */
@@ -2088,7 +1550,6 @@ function populateFilterOptions(){
 let allLeadsCache = [];
 async function renderLeadsTable(){
   allLeadsCache = await LeadsDB.getAll();
-  populateCallLeadOptions();
   const search = document.getElementById('leadSearch').value.toLowerCase();
   const fStage = document.getElementById('filterStage').value;
   const fSource = document.getElementById('filterSource').value;
@@ -2176,7 +1637,6 @@ function leadRowHtml(l){
           ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
           ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
           <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
-          <button class="btn btn-sm" onclick="sendToProposal('${l.id}')">Proposal</button>
           <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
           <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
           <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
@@ -2230,7 +1690,6 @@ async function confirmDeleteLead(id){
   toast(`${lead ? lead.contact_name : 'Lead'} has been deleted`,'success');
   await refreshPipeline();
   await renderFollowupTable();
-  await renderSavedProposals();
 }
 function getSelectedLeadIds(){
   return Array.from(document.querySelectorAll('.lead-select-cb:checked')).map(cb=>cb.dataset.id);
@@ -2282,7 +1741,6 @@ async function confirmBulkDeleteLeads(){
   toast(`${count} lead${count>1?'s':''} deleted.`,'success');
   await refreshPipeline();
   await renderFollowupTable();
-  await renderSavedProposals();
 }
 
 async function changeLeadStage(id, stage){
@@ -2340,51 +1798,35 @@ async function refreshPipeline(){
 function leadCtx(l){
   return `Business: ${l.business_name}\nContact: ${l.contact_name}\nEmail: ${l.email||'n/a'}\nPhone: ${l.phone||'n/a'}\nSource: ${l.source}\nStage: ${l.stage}\nPractice Type: ${l.practice_type}\nLocation: ${l.location}\nProposal Value: ${fmtMoney(l.proposal_value)}/month\nLast Contact: ${fmtDate(l.last_contact)}\nNext Follow-Up: ${fmtDate(l.next_followup)}\nNotes: ${l.notes||'None'}`;
 }
-async function actionNurture(id){
+function actionNurture(id){
   const l = findLeadById(id);
-  await openAIDraftModal(`Nurture Email — ${l.business_name}`,
-    await buildSystemPrompt("Task: Draft a warm nurture email to keep this lead engaged without being pushy. This lead has not yet booked a discovery call."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a warm nurture email (with subject line) that keeps the relationship alive and gently moves them toward booking a discovery call. Write ONLY the email, no preamble.`,
-    l.id);
-  logComm(l.id, 'nurture', 'Nurture email drafted');
+  openManualDraftModal(`Nurture Email — ${l.business_name}`, l.id, 'nurture', leadCtx(l));
 }
-async function actionRecap(id){
+function actionRecap(id){
   const l = findLeadById(id);
-  await openAIDraftModal(`Discovery Call Recap — ${l.business_name}`,
-    await buildSystemPrompt("Task: Draft a post-discovery-call recap email."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a recap email thanking them for the discovery call, briefly summarizing what was likely discussed based on their notes, and letting them know a tailored proposal is coming next. Write ONLY the email, no preamble.`,
-    l.id);
-  logComm(l.id, 'recap', 'Recap email drafted');
+  openManualDraftModal(`Discovery Call Recap — ${l.business_name}`, l.id, 'recap', leadCtx(l));
 }
 async function actionFollowUp(id){
   const l = findLeadById(id);
-  await openAIDraftModal(`Follow-Up Email — ${l.business_name}`,
-    await buildSystemPrompt("Task: Draft a follow-up email appropriate to this lead's current stage."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nWrite a follow-up email checking in given how long it has been since last contact and their current stage. Write ONLY the email, no preamble.`,
-    l.id);
+  openManualDraftModal(`Follow-Up Email — ${l.business_name}`, l.id, 'followup', leadCtx(l));
   await LeadsDB.update(id, { last_contact: todayISO() });
-  logComm(l.id, 'followup', 'Follow-up email drafted');
   await refreshPipeline();
 }
 async function actionReactivate(id){
   const l = allLeadsCache.find(x=>x.id===id) || (await LeadsDB.getAll()).find(x=>x.id===id);
-  await openAIDraftModal(`Reactivation Message — ${l.business_name}`,
-    await buildSystemPrompt("Task: Draft a re-engagement message for a cold lead who has gone quiet."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nThis lead has gone cold with no contact in a while. Write a low-pressure re-engagement email that references their original interest and gives them a fresh, easy reason to reconnect. Write ONLY the email, no preamble.`,
-    l.id);
-  logComm(l.id, 'reactivate', 'Reactivation message drafted');
+  openManualDraftModal(`Reactivation Message — ${l.business_name}`, l.id, 'reactivate', leadCtx(l));
 }
-async function logComm(leadId, type, subject){
+async function logComm(leadId, type, subject, body){
   await CommLogDB.insert({ lead_id:leadId, type, subject, content: subject, sent_at: new Date().toISOString() });
   if(HUBSPOT.isReady()){
     const lead = findLeadById(leadId) || (await LeadsDB.getAll()).find(l=>l.id===leadId);
     if(lead && lead.hubspot_contact_id){
-      const body = window.__lastAiDraftText || subject;
+      const logBody = body || subject;
       try{
         if(type === 'recap'){
-          await HUBSPOT.logCall(lead.hubspot_contact_id, body);
+          await HUBSPOT.logCall(lead.hubspot_contact_id, logBody);
         } else {
-          await HUBSPOT.logEmail(lead.hubspot_contact_id, subject, body);
+          await HUBSPOT.logEmail(lead.hubspot_contact_id, subject, logBody);
         }
       }catch(e){ console.warn('HubSpot activity log failed:', e); }
     }
@@ -2411,11 +1853,8 @@ async function confirmBookCall(id){
   await refreshPipeline();
   await syncStageToHubspot(l, 'Discovery Booked');
   triggerMeetingPrepBrief(id);
-  await openAIDraftModal(`Confirmation Email — ${l.business_name}`,
-    await buildSystemPrompt("Task: Draft a discovery call confirmation email."),
-    `Here is the lead context:\n${leadCtx(l)}\n\nA discovery call has just been scheduled for ${fmtDate(date)} at ${time}. Write a confirmation email that confirms the date/time, sets expectations for the call, and shows genuine enthusiasm to speak with them. Write ONLY the email, no preamble.`,
-    l.id);
-  logComm(l.id, 'book_call', `Discovery call booked for ${fmtDate(date)} ${time}`);
+  openManualDraftModal(`Confirmation Email — ${l.business_name}`, l.id, 'book_call',
+    `${leadCtx(l)}\n\nDiscovery call scheduled for ${fmtDate(date)} at ${time}.`);
 }
 async function triggerMeetingPrepBrief(id){
   const supabaseUrl = getSupabaseUrl();
@@ -2466,6 +1905,10 @@ async function confirmBookMeeting(id){
     });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    if(data.skipped){
+      toast('Auto-Send is OFF in Settings — the booking email was not sent.','error');
+      return;
+    }
     toast('Meeting proposal sent.','success');
     await refreshPipeline();
   }catch(e){
@@ -2505,10 +1948,6 @@ async function openHistoryModal(id){
 function leadFormHtml(l){
   l = l || {};
   return `
-    <div class="form-row"><label>Paste raw lead info (optional)</label>
-      <textarea id="leadPaste" rows="4" placeholder="Paste anything — an email signature, a DM, notes — Claude will extract the fields below."></textarea>
-    </div>
-    <button class="btn btn-sm" style="margin-bottom:16px;" onclick="extractLeadFromPaste()">Extract with Claude</button>
     <div class="form-grid">
       <div class="form-row"><label>Business Name</label><input type="text" id="lBusinessName" value="${escapeHtml(l.business_name||'')}"></div>
       <div class="form-row"><label>Contact Name</label><input type="text" id="lContactName" value="${escapeHtml(l.contact_name||'')}"></div>
@@ -2605,55 +2044,9 @@ async function saveEditLead(id){
     await syncStageToHubspot(before, data.stage);
   }
 }
-async function extractLeadFromPaste(){
-  const raw = document.getElementById('leadPaste').value.trim();
-  if(!raw){ toast('Paste some lead info first.','error'); return; }
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){ toast('Add your Anthropic API key in Settings to enable AI extraction.','error'); return; }
-  toast('Extracting with Claude...');
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Extract structured lead data from raw pasted text."),
-    `Extract lead information from this raw text and return ONLY valid JSON (no markdown fences, no explanation) with exactly these keys: business_name, contact_name, email, phone, source (one of: ${SOURCES.join(', ')}), practice_type (one of: ${PRACTICE_TYPES.join(', ')}), location, proposal_value (number, 0 if unknown), notes (a short summary of anything relevant). If a field is unknown, use an empty string.\n\nRaw text:\n${raw}`
-  );
-  if(!result.ok){ toast(result.message,'error'); return; }
-  try{
-    const parsed = JSON.parse(stripJsonFence(result.text));
-    document.getElementById('lBusinessName').value = parsed.business_name||'';
-    document.getElementById('lContactName').value = parsed.contact_name||'';
-    document.getElementById('lEmail').value = parsed.email||'';
-    document.getElementById('lPhone').value = parsed.phone||'';
-    if(parsed.source && SOURCES.includes(parsed.source)) document.getElementById('lSource').value = parsed.source;
-    if(parsed.practice_type && PRACTICE_TYPES.includes(parsed.practice_type)) document.getElementById('lPracticeType').value = parsed.practice_type;
-    document.getElementById('lLocation').value = parsed.location||'';
-    document.getElementById('lProposalValue').value = parsed.proposal_value||'';
-    document.getElementById('lNotes').value = parsed.notes||'';
-    toast('Fields extracted — review and save.','success');
-  }catch(e){
-    toast("Could not parse Claude's response as structured data. Try again or fill manually.",'error');
-  }
-}
-
-/* Send to proposal */
-function sendToProposal(id){
-  const l = findLeadById(id);
-  currentProposalLeadId = id;
-  switchTab('proposal');
-  document.getElementById('pBusinessName').value = l.business_name;
-  document.getElementById('pContactName').value = l.contact_name;
-  document.getElementById('pPracticeType').value = l.practice_type;
-  document.getElementById('pLocation').value = l.location;
-  document.getElementById('pInvestment').value = l.proposal_value;
-  document.getElementById('proposalNotes').value = l.notes || '';
-  toast(`Proposal Builder pre-filled for ${l.business_name}.`);
-}
-
-/* ===================== HUBSPOT / MONDAY SYNC (connection slots) ===================== */
+/* ===================== HUBSPOT SYNC (connection slots) ===================== */
 function refreshConnectionSlots(){
   document.getElementById('btnSyncHubspot').style.display = localStorage.getItem('hubspot_key') ? 'inline-flex':'none';
-  document.getElementById('btnSyncMonday').style.display = localStorage.getItem('monday_key') ? 'inline-flex':'none';
-  document.getElementById('btnConnectGmail').style.display = localStorage.getItem('gmail_key') ? 'inline-flex':'none';
-  document.getElementById('btnLoadReadai').style.display = localStorage.getItem('readai_key') ? 'inline-flex':'none';
-  document.getElementById('btnLoadOtter').style.display = localStorage.getItem('otter_key') ? 'inline-flex':'none';
   renderFollowupTable();
 }
 async function syncHubspot(){
@@ -2709,62 +2102,7 @@ async function syncHubspot(){
     toast('Could not sync HubSpot directly from the browser (likely CORS or an invalid key). In production this runs through a backend proxy.','error');
   }
 }
-async function syncMonday(){
-  const key = localStorage.getItem('monday_key');
-  toast('Connecting to Monday.com...');
-  try{
-    const res = await fetch('https://api.monday.com/v2', { method:'POST', headers:{ Authorization:key, 'Content-Type':'application/json' }, body: JSON.stringify({query:'query { boards { name } }'}) });
-    if(!res.ok) throw new Error('Monday returned '+res.status);
-    toast('Synced cold leads from Monday.com.','success');
-  }catch(e){
-    toast('Could not sync Monday.com directly from the browser (likely CORS). In production this runs through a backend proxy.','error');
-  }
-}
-
 /* ===================== INBOX MANAGER ===================== */
-function connectGmail(){
-  toast('Gmail connection requires an OAuth flow through a backend service — this button is wired for that integration once a server proxy is in place.','error');
-}
-async function processInboxEmail(){
-  const raw = document.getElementById('inboxPasteArea').value.trim();
-  if(!raw){ toast('Paste an email first.','error'); return; }
-  const resultEl = document.getElementById('inboxResult');
-  resultEl.innerHTML = `<div class="ai-loading">Processing email with Claude...</div>`;
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){
-    resultEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`;
-    return;
-  }
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Process an inbound email for Mary's inbox."),
-    buildUserContent(`Here is an email Mary received:\n\n${raw}\n\nReturn ONLY valid JSON (no markdown fences) with these keys:\n- sender_summary (who sent it and what they want, 1-2 sentences)\n- category (one of: Lead Inquiry, Client Request, Partner Outreach, Admin, Spam)\n- suggested_action (short sentence)\n- clarifying_questions (array of strings, empty array if none needed)\n- draft_reply (a complete, ready-to-send reply written in Mary's voice, with no bracket placeholders)`, 'inbox')
-  );
-  if(!result.ok){ resultEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  let parsed;
-  try{ parsed = JSON.parse(stripJsonFence(result.text)); }
-  catch(e){ resultEl.innerHTML = `<div class="card"><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(result.text)}</pre></div>`; return; }
-  lastInboxProcessed = parsed;
-  resultEl.innerHTML = renderInboxResult(parsed);
-  await CommLogDB.insert({ lead_id:null, type:'inbox_email', subject:parsed.category, content: JSON.stringify({ original:raw, ...parsed }), sent_at: new Date().toISOString() });
-  await renderInboxHistory();
-}
-function renderInboxResult(parsed){
-  return `
-  <div class="card" style="background:var(--bg-secondary);">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <span class="badge" style="background:var(--pink-light);color:var(--pink);">${escapeHtml(parsed.category||'Uncategorized')}</span>
-    </div>
-    <p style="margin-bottom:10px;"><strong>Summary:</strong> ${escapeHtml(parsed.sender_summary||'')}</p>
-    <p style="margin-bottom:10px;"><strong>Suggested action:</strong> ${escapeHtml(parsed.suggested_action||'')}</p>
-    ${(parsed.clarifying_questions && parsed.clarifying_questions.length) ? `<p style="margin-bottom:10px;"><strong>Clarifying questions:</strong></p><ul style="margin:0 0 10px 20px;">${parsed.clarifying_questions.map(q=>`<li>${escapeHtml(q)}</li>`).join('')}</ul>` : ''}
-    <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Drafted Reply</label>
-    <textarea id="inboxDraftReply" rows="9" style="margin-top:6px;">${escapeHtml(parsed.draft_reply||'')}</textarea>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button class="btn btn-pink btn-sm" onclick="copyTextareaContent('inboxDraftReply')">Copy</button>
-      <button class="btn btn-sm" onclick="document.getElementById('inboxDraftReply').removeAttribute('readonly')">Edit</button>
-    </div>
-  </div>`;
-}
 async function renderInboxHistory(){
   const log = (await CommLogDB.getAll()).filter(c=>c.type==='inbox_email');
   const wrap = document.getElementById('inboxHistory');
@@ -2832,477 +2170,6 @@ async function resolveRescheduleFlag(id){
   await renderRescheduleFlags();
 }
 
-/* ===================== DM MANAGER ===================== */
-document.getElementById('dmSubtabs').addEventListener('click', e=>{
-  const st = e.target.closest('.subtab');
-  if(!st) return;
-  currentDmPlatform = st.dataset.platform;
-  document.querySelectorAll('#dmSubtabs .subtab').forEach(t=>t.classList.toggle('active', t===st));
-  renderDmPanels();
-});
-function renderDmPanels(){
-  const wrap = document.getElementById('dmPlatformPanels');
-  wrap.innerHTML = `
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px;">Process a ${currentDmPlatform} DM</div>
-      <div class="form-row">
-        <textarea id="dmPasteArea" rows="6" placeholder="Paste the ${currentDmPlatform} message here..."></textarea>
-        <div class="file-upload-row">
-          <label class="upload-btn">📎 Attach file<input type="file" id="dmFileInput" style="display:none;" onchange="handleFileUpload('dmFileInput','dmPasteArea','dm')"></label>
-          <span class="attach-tag hidden" id="dmAttachTag"></span>
-        </div>
-      </div>
-      <button class="btn btn-pink" onclick="processDm()">Process with Claude</button>
-      <div id="dmResult" style="margin-top:18px;"></div>
-    </div>
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px;">${currentDmPlatform} History</div>
-      <div id="dmHistory"></div>
-      <div id="dmHistoryEmpty" class="chat-empty hidden">No ${currentDmPlatform} DMs processed yet.</div>
-    </div>
-  `;
-  renderDmHistory();
-}
-async function processDm(){
-  const raw = document.getElementById('dmPasteArea').value.trim();
-  if(!raw){ toast('Paste a DM first.','error'); return; }
-  const resultEl = document.getElementById('dmResult');
-  resultEl.innerHTML = `<div class="ai-loading">Processing DM with Claude...</div>`;
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){ resultEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`; return; }
-  const result = await callClaude(
-    await buildSystemPrompt(`Task: Process an inbound ${currentDmPlatform} direct message for Social Practice.`),
-    buildUserContent(`Here is a ${currentDmPlatform} DM Mary's business received:\n\n${raw}\n\nReturn ONLY valid JSON (no markdown fences) with these keys:\n- classification (one of: Potential Lead, Existing Client, Partner, Spam)\n- summary (1-2 sentences)\n- next_action (short sentence)\n- draft_reply (a complete reply in Mary's voice, appropriate for ${currentDmPlatform} DMs — if it's a lead, gently move them toward booking a discovery call; if a client, be helpful and professional)`, 'dm')
-  );
-  if(!result.ok){ resultEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  let parsed;
-  try{ parsed = JSON.parse(stripJsonFence(result.text)); }
-  catch(e){ resultEl.innerHTML = `<div class="card"><pre style="white-space:pre-wrap;font-family:inherit;">${escapeHtml(result.text)}</pre></div>`; return; }
-  resultEl.innerHTML = `
-  <div class="card" style="background:var(--bg-secondary);">
-    <span class="badge" style="background:var(--pink-light);color:var(--pink);margin-bottom:10px;display:inline-block;">${escapeHtml(parsed.classification||'')}</span>
-    <p style="margin-bottom:10px;"><strong>Summary:</strong> ${escapeHtml(parsed.summary||'')}</p>
-    <p style="margin-bottom:10px;"><strong>Next action:</strong> ${escapeHtml(parsed.next_action||'')}</p>
-    <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Drafted Reply</label>
-    <textarea id="dmDraftReply" rows="7" style="margin-top:6px;">${escapeHtml(parsed.draft_reply||'')}</textarea>
-    <button class="btn btn-pink btn-sm" style="margin-top:10px;" onclick="copyTextareaContent('dmDraftReply')">Copy</button>
-  </div>`;
-  await DmLogDB.insert({ platform: currentDmPlatform, sender:'', message: raw, reply: parsed.draft_reply||'', processed_at: new Date().toISOString() });
-  await renderDmHistory();
-}
-async function renderDmHistory(){
-  const log = (await DmLogDB.getAll()).filter(d=>d.platform===currentDmPlatform);
-  const wrap = document.getElementById('dmHistory');
-  const empty = document.getElementById('dmHistoryEmpty');
-  if(!wrap) return;
-  if(!log.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  wrap.innerHTML = log.map(d=>`<div class="list-item list-item-clickable" onclick="openDmHistoryModal('${d.id}')"><div><div class="list-item-title">${escapeHtml((d.message||'').slice(0,60))}...</div><div class="list-item-sub">${new Date(d.processed_at).toLocaleString()}</div></div></div>`).join('');
-}
-async function openDmHistoryModal(id){
-  const log = await DmLogDB.getAll();
-  const d = log.find(x=>x.id===id);
-  if(!d) return;
-  openModal(`${escapeHtml(d.platform||'DM')} Message`, `
-    <div class="section-label">Original Message</div>
-    <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;"><p style="white-space:pre-wrap;font-size:13.5px;">${escapeHtml(d.message||'Not available.')}</p></div>
-    <div class="section-label">Drafted Reply</div>
-    <textarea id="dmHistoryModalReply" rows="8" readonly>${escapeHtml(d.reply||'')}</textarea>
-    <p class="muted" style="font-size:12px;margin-top:14px;">${escapeHtml(d.platform||'')}${d.sender?' · '+escapeHtml(d.sender):''} · ${new Date(d.processed_at).toLocaleString()}</p>
-  `, `<button class="btn btn-secondary" onclick="copyTextareaContent('dmHistoryModalReply')">Copy Reply</button><button class="btn" onclick="closeModal()">Close</button>`);
-}
-
-/* ===================== PROPOSAL BUILDER ===================== */
-async function analyzeProposalNotes(){
-  const notes = document.getElementById('proposalNotes').value.trim();
-  if(!notes){ toast('Paste discovery notes first.','error'); return; }
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){ toast('Add your Anthropic API key in Settings to enable AI extraction.','error'); return; }
-  toast('Analyzing notes with Claude...');
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Extract structured prospect details from discovery call notes or a transcript."),
-    buildUserContent(`Extract structured details from these discovery notes and return ONLY valid JSON (no markdown fences) with exactly these keys: business_name, contact_name, practice_type (one of: ${PRACTICE_TYPES.join(', ')}), location, pain_points, goals, proposed_services, proposed_investment (number, estimate reasonably if not stated), timeline.\n\nNotes:\n${notes}`, 'proposal')
-  );
-  if(!result.ok){ toast(result.message,'error'); return; }
-  try{
-    const p = JSON.parse(stripJsonFence(result.text));
-    document.getElementById('pBusinessName').value = p.business_name||document.getElementById('pBusinessName').value;
-    document.getElementById('pContactName').value = p.contact_name||document.getElementById('pContactName').value;
-    if(p.practice_type && PRACTICE_TYPES.includes(p.practice_type)) document.getElementById('pPracticeType').value = p.practice_type;
-    document.getElementById('pLocation').value = p.location||document.getElementById('pLocation').value;
-    document.getElementById('pInvestment').value = p.proposed_investment||document.getElementById('pInvestment').value;
-    document.getElementById('pTimeline').value = p.timeline||'';
-    document.getElementById('pPainPoints').value = p.pain_points||'';
-    document.getElementById('pGoals').value = p.goals||'';
-    document.getElementById('pServices').value = p.proposed_services||'';
-    toast('Notes analyzed — review the fields below.','success');
-  }catch(e){ toast('Could not parse the analysis. Try again or fill fields manually.','error'); }
-}
-function proposalMarkdownToHtml(md){
-  const lines = md.split('\n');
-  let html='', inList=false;
-  for(let line of lines){
-    line = line.trim();
-    if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
-    if(/^#{1,3}\s/.test(line)){ if(inList){html+='</ul>';inList=false;} html += `<h2>${escapeHtml(line.replace(/^#{1,3}\s/,''))}</h2>`; continue; }
-    if(/^[-*]\s/.test(line)){ if(!inList){html+='<ul>';inList=true;} html += `<li>${inlineMd(line.replace(/^[-*]\s/,''))}</li>`; continue; }
-    if(inList){ html+='</ul>'; inList=false; }
-    html += `<p>${inlineMd(line)}</p>`;
-  }
-  if(inList) html+='</ul>';
-  return html;
-}
-/* Presentation-only: splits the same generated markdown into per-##-header
-   collapsible cards instead of one long scroll. Doesn't touch what content
-   gets generated — proposalMarkdownToHtml above is kept as the fallback for
-   text with no clear section headers. */
-let proposalSectionRawMap = {};
-function parseProposalSections(md){
-  const lines = md.split('\n');
-  const sections = [];
-  let current = null;
-  for(const rawLine of lines){
-    const line = rawLine.trim();
-    if(/^#{1,3}\s/.test(line)){
-      if(current) sections.push(current);
-      current = { title: line.replace(/^#{1,3}\s/,''), body: '' };
-    } else {
-      if(!current) current = { title: '', body: '' };
-      current.body += rawLine + '\n';
-    }
-  }
-  if(current) sections.push(current);
-  return sections.filter(s=>s.title || s.body.trim());
-}
-function proposalSectionBodyToHtml(body){
-  const lines = body.split('\n');
-  let html='', inList=false;
-  for(let line of lines){
-    line = line.trim();
-    if(!line){ if(inList){html+='</ul>';inList=false;} continue; }
-    if(/^[-*]\s/.test(line)){ if(!inList){html+='<ul>';inList=true;} html += `<li>${inlineMd(line.replace(/^[-*]\s/,''))}</li>`; continue; }
-    if(inList){ html+='</ul>'; inList=false; }
-    html += `<p>${inlineMd(line)}</p>`;
-  }
-  if(inList) html+='</ul>';
-  return html;
-}
-function renderSectionedProposal(md, idPrefix){
-  const sections = parseProposalSections(md);
-  if(sections.length <= 1) return `<div class="proposal-view">${proposalMarkdownToHtml(md)}</div>`;
-  return `<div class="proposal-sections">` + sections.map((s,i)=>{
-    const secId = `${idPrefix}-${i}`;
-    proposalSectionRawMap[secId] = (s.title ? `## ${s.title}\n` : '') + s.body.trim();
-    return `
-    <div class="proposal-section-item" id="${secId}">
-      <div class="proposal-section-header" onclick="toggleProposalSection('${secId}')">
-        <span class="proposal-section-chevron">▾</span>
-        <div class="proposal-section-title">${escapeHtml(s.title || 'Overview')}</div>
-        <button class="btn btn-sm" onclick="event.stopPropagation();copyProposalSection('${secId}')">Copy</button>
-      </div>
-      <div class="proposal-section-body">${proposalSectionBodyToHtml(s.body)}</div>
-    </div>`;
-  }).join('') + `</div>`;
-}
-function toggleProposalSection(secId){
-  const item = document.getElementById(secId);
-  if(item) item.classList.toggle('collapsed');
-}
-function copyProposalSection(secId){
-  const text = proposalSectionRawMap[secId] || '';
-  if(!text){ toast('Nothing to copy.','error'); return; }
-  navigator.clipboard.writeText(text).then(()=>toast('Section copied.','success'));
-}
-function inlineMd(s){ return escapeHtml(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }
-let lastProposalText = '';
-async function generateProposal(){
-  const business = document.getElementById('pBusinessName').value.trim();
-  if(!business){ toast('Add at least a business name.','error'); return; }
-  const outEl = document.getElementById('proposalOutput');
-  outEl.innerHTML = `<div class="ai-loading">Generating proposal with Claude...</div>`;
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){ outEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`; return; }
-  const details = `Business Name: ${business}
-Contact Name: ${document.getElementById('pContactName').value}
-Practice Type: ${document.getElementById('pPracticeType').value}
-Location: ${document.getElementById('pLocation').value}
-Pain Points: ${document.getElementById('pPainPoints').value}
-Goals: ${document.getElementById('pGoals').value}
-Proposed Services: ${document.getElementById('pServices').value}
-Proposed Investment: $${document.getElementById('pInvestment').value}/month
-Timeline: ${document.getElementById('pTimeline').value}
-Raw Discovery Notes: ${document.getElementById('proposalNotes').value}`;
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Write a complete, tailored sales proposal for a medical aesthetics practice considering Social Practice's services."),
-    buildUserContent(`Using the following prospect details, write a full proposal using ## markdown headers for each section, in this order: Executive Summary, Current Situation, Proposed Solution, What Social Practice Will Deliver, Investment & Package Options, Why Social Practice (exactly 3 specific reasons tied to their situation), Next Steps. Be specific to their practice type and pain points — never generic. Use bullet lists (-) where appropriate.\n\n${details}`, 'proposal'),
-    { maxTokens: 3000 }
-  );
-  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  lastProposalText = result.text;
-  outEl.innerHTML = renderSectionedProposal(result.text, 'proposalSec');
-  document.getElementById('proposalSaveRow').classList.remove('hidden');
-}
-function copyProposal(){
-  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
-  navigator.clipboard.writeText(lastProposalText).then(()=>toast('Proposal copied to clipboard.','success'));
-}
-async function generateClaudeDesignBrief(){
-  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
-  const card = document.getElementById('claudeDesignBriefCard');
-  const outEl = document.getElementById('claudeDesignBriefOutput');
-  card.classList.remove('hidden');
-  outEl.innerHTML = `<div class="ai-loading">Building Claude Design brief...</div>`;
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Turn a written sales proposal into a structured brief formatted specifically for Claude Design (an interactive design tool a person runs manually inside Claude — not an API to call). The output should read like a clear spec someone would hand to Claude Design to generate a visual proposal deck, not commentary about the proposal."),
-    `Here is a written proposal:\n\n${lastProposalText}\n\nWrite a Claude Design brief with these sections, using ## markdown headers:\n- Purpose (what this document/deck is for and who it's going to)\n- Structure (the sections/slides it needs, in order, with a one-line summary of what each one contains)\n- Tone & Style (how it should feel to read — reference Social Practice's brand: deep navy #1a1a2e and hot pink #e91e8c, clean/modern, medical aesthetics industry appropriate)\n- Brand Details (anything already known about Mary's business/Social Practice that Claude Design should reflect)\nWrite it as direct instructions Claude Design can act on.`
-  );
-  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  outEl.innerHTML = renderSectionedProposal(result.text, 'claudeDesignSec');
-}
-async function saveProposal(){
-  if(!lastProposalText){ toast('Generate a proposal first.','error'); return; }
-  const business = document.getElementById('pBusinessName').value.trim();
-  const value = Number(document.getElementById('pInvestment').value)||0;
-  const record = await ProposalsDB.insert({ lead_id: currentProposalLeadId, business_name: business, content: lastProposalText, value, status:'Sent', created_at:new Date().toISOString() });
-  if(currentProposalLeadId){
-    const lead = (await LeadsDB.getAll()).find(l=>l.id===currentProposalLeadId);
-    await LeadsDB.update(currentProposalLeadId, { stage:'Proposal Sent', proposal_value: value, last_contact: todayISO() });
-    await ensureFollowupForLead(currentProposalLeadId, 'Proposal');
-    if(HUBSPOT.isReady() && lead && lead.hubspot_deal_id){
-      try{
-        await HUBSPOT.updateDealStage(lead.hubspot_deal_id, 'Proposal Sent');
-        await HUBSPOT.updateDealAmount(lead.hubspot_deal_id, value);
-      }catch(e){ console.warn('HubSpot proposal sync failed:', e); }
-    }
-    currentProposalLeadId = null;
-  }
-  toast('Proposal saved.','success');
-  await renderSavedProposals();
-  await refreshPipeline();
-  await renderFollowupTable();
-}
-async function renderSavedProposals(){
-  const list = await ProposalsDB.getAll();
-  const wrap = document.getElementById('savedProposalsList');
-  const empty = document.getElementById('savedProposalsEmpty');
-  if(!list.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  wrap.innerHTML = list.map(p=>`
-    <div class="list-item">
-      <div><div class="list-item-title">${escapeHtml(p.business_name||'Untitled')}</div><div class="list-item-sub">${fmtMoney(p.value)}/mo · ${new Date(p.created_at).toLocaleDateString()} · ${p.status}</div></div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-sm" onclick="viewSavedProposal('${p.id}')">View</button>
-      </div>
-    </div>`).join('');
-}
-async function viewSavedProposal(id){
-  const p = (await ProposalsDB.getAll()).find(x=>x.id===id);
-  lastProposalText = p.content;
-  openModal(
-    p.business_name||'Proposal',
-    renderSectionedProposal(p.content, 'savedProp-'+id),
-    `<button class="btn" onclick="closeModal()">Close</button><button class="btn btn-navy" onclick="copyProposal()">Copy Full Proposal</button>`
-  );
-}
-async function loadFromReadai(){
-  const key = localStorage.getItem('readai_key');
-  if(!key){ toast('Add your Read.ai API key in Settings first.','error'); return; }
-  toast('Loading latest call from Read.ai...');
-  try{
-    const res = await fetch('https://api.read.ai/v1/sessions', {
-      headers: { 'Authorization': 'Bearer '+key }
-    });
-    if(!res.ok) throw new Error('Read.ai returned '+res.status);
-    const data = await res.json();
-    const calls = data.sessions || data.results || data.items || [];
-    if(!calls.length){ toast('No calls found in Read.ai.','error'); return; }
-    const latest = calls[0];
-    const transcript = latest.transcript || latest.transcript_text || JSON.stringify(latest);
-    document.getElementById('proposalNotes').value = transcript;
-    toast('Latest Read.ai transcript loaded.','success');
-  }catch(e){
-    toast('Could not reach Read.ai directly from the browser (likely CORS, or an invalid key). In production this call would route through a backend proxy.','error');
-  }
-}
-async function loadFromOtter(){
-  const key = localStorage.getItem('otter_key');
-  if(!key){ toast('Add your Otter.ai API key in Settings first.','error'); return; }
-  toast('Loading latest transcript from Otter.ai...');
-  try{
-    const res = await fetch('https://otter.ai/forward/api/v1/speeches', {
-      headers: { 'Authorization': 'Bearer '+key }
-    });
-    if(!res.ok) throw new Error('Otter.ai returned '+res.status);
-    const data = await res.json();
-    const speeches = data.speeches || data.results || data.items || [];
-    if(!speeches.length){ toast('No transcripts found in Otter.ai.','error'); return; }
-    const latest = speeches[0];
-    const transcript = latest.transcript || latest.transcript_text || JSON.stringify(latest);
-    document.getElementById('proposalNotes').value = transcript;
-    toast('Latest Otter.ai transcript loaded.','success');
-  }catch(e){
-    toast('Could not reach Otter.ai directly from the browser (likely CORS, or an invalid key). In production this call would route through a backend proxy.','error');
-  }
-}
-
-/* ===================== CALL NOTES ===================== */
-let callTimerInterval = null;
-let callTimerSeconds = 0;
-let lastCallSummary = null;
-
-function populateCallLeadOptions(){
-  const list = document.getElementById('callLeadOptions');
-  if(!list) return;
-  list.innerHTML = allLeadsCache.map(l=>`<option value="${escapeHtml(l.business_name)}"></option>`).join('');
-}
-function initCallNotesTab(){
-  const dateEl = document.getElementById('clCallDate');
-  if(dateEl && !dateEl.value) dateEl.value = todayISO();
-  populateCallLeadOptions();
-}
-function formatDuration(totalSeconds){
-  const m = String(Math.floor(totalSeconds/60)).padStart(2,'0');
-  const s = String(totalSeconds%60).padStart(2,'0');
-  return `${m}:${s}`;
-}
-function startCallTimer(){
-  if(callTimerInterval) return;
-  callTimerSeconds = 0;
-  document.getElementById('callTimerDisplay').textContent = '00:00';
-  document.getElementById('btnStartCallTimer').disabled = true;
-  callTimerInterval = setInterval(()=>{
-    callTimerSeconds++;
-    document.getElementById('callTimerDisplay').textContent = formatDuration(callTimerSeconds);
-  }, 1000);
-}
-function stopCallTimer(){
-  if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
-  document.getElementById('btnStartCallTimer').disabled = false;
-}
-function renderCallSummary(d){
-  const list = (arr)=> (arr && arr.length) ? `<ul>${arr.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '<p class="muted">None noted.</p>';
-  return `
-    <h2>Call Overview</h2>
-    <p>${escapeHtml(d.call_overview||'')} — ${escapeHtml(d.callType||'')} with ${escapeHtml(d.callerName||'Unknown')} on ${fmtDate(d.callDate)}${d.duration?` (${escapeHtml(d.duration)})`:''}</p>
-    <h2>Pain Points Identified</h2>${list(d.pain_points)}
-    <h2>Goals Discussed</h2>${list(d.goals)}
-    <h2>Objections Raised</h2>${list(d.objections)}
-    <h2>Services to Propose</h2>${list(d.services_to_propose)}
-    <h2>Agreed Next Steps</h2>${list(d.next_steps)}
-    <h2>Recommended Proposal Value</h2><p><strong>${fmtMoney(d.recommended_value)}/month</strong></p>
-  `;
-}
-async function processCallNotes(){
-  const notes = document.getElementById('clQuickNotes').value.trim();
-  if(!notes){ toast('Add some notes first.','error'); return; }
-  stopCallTimer();
-  const leadName = document.getElementById('clLeadName').value.trim();
-  const callType = document.getElementById('clCallType').value;
-  const callDate = document.getElementById('clCallDate').value || todayISO();
-  const callerName = document.getElementById('clCallerName').value.trim();
-  const duration = formatDuration(callTimerSeconds);
-  const outEl = document.getElementById('callSummaryOutput');
-  outEl.innerHTML = `<div class="ai-loading">Processing call notes with Claude...</div>`;
-  document.getElementById('callActionsRow').classList.add('hidden');
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){
-    outEl.innerHTML = `<p class="muted">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p>`;
-    return;
-  }
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Turn raw bullet-point call notes into a structured call summary for a medical aesthetics prospect or client."),
-    `Call details:\nLead/Business: ${leadName||'Unknown'}\nCall Type: ${callType}\nCall Date: ${callDate}\nCaller (who Mary spoke with): ${callerName||'Unknown'}\nCall Duration: ${duration}\n\nRaw notes taken during the call:\n${notes}\n\nReturn ONLY valid JSON (no markdown fences) with these exact keys: call_overview (1-2 sentence summary), pain_points (array of strings), goals (array of strings), objections (array of strings), services_to_propose (array of strings — choose from Content Strategy, Content Creation, Paid Ads, Community Management, Full-Service Management, or note others discussed), next_steps (array of strings), recommended_value (number — a reasonable monthly investment in USD based on the scope discussed).`,
-    { maxTokens: 1800 }
-  );
-  if(!result.ok){ outEl.innerHTML = `<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`; return; }
-  try{
-    const parsed = JSON.parse(stripJsonFence(result.text));
-    lastCallSummary = { leadName, callType, callDate, callerName, duration, notes, ...parsed };
-    outEl.innerHTML = renderCallSummary(lastCallSummary);
-    document.getElementById('callActionsRow').classList.remove('hidden');
-  }catch(e){
-    outEl.innerHTML = `<p>${escapeHtml(result.text)}</p>`;
-  }
-}
-function sendCallToProposal(){
-  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
-  switchTab('proposal');
-  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName);
-  if(lead){
-    currentProposalLeadId = lead.id;
-    document.getElementById('pBusinessName').value = lead.business_name;
-    document.getElementById('pContactName').value = lead.contact_name;
-    document.getElementById('pPracticeType').value = lead.practice_type;
-    document.getElementById('pLocation').value = lead.location;
-  } else {
-    document.getElementById('pBusinessName').value = lastCallSummary.leadName || '';
-  }
-  document.getElementById('pPainPoints').value = (lastCallSummary.pain_points||[]).join('; ');
-  document.getElementById('pGoals').value = (lastCallSummary.goals||[]).join('; ');
-  document.getElementById('pServices').value = (lastCallSummary.services_to_propose||[]).join('; ');
-  document.getElementById('pInvestment').value = lastCallSummary.recommended_value || '';
-  document.getElementById('proposalNotes').value = lastCallSummary.notes || '';
-  toast('Proposal Builder pre-filled from call summary.','success');
-}
-async function logCallToHubspot(){
-  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
-  if(!HUBSPOT.isReady()){ toast('Add your HubSpot API key in Settings first.','error'); return; }
-  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName) || (await LeadsDB.getAll()).find(l=>l.business_name===lastCallSummary.leadName);
-  if(!lead || !lead.hubspot_contact_id){ toast('No matching HubSpot contact found for this lead.','error'); return; }
-  const body = `Call Overview: ${lastCallSummary.call_overview||''}\n\nPain Points: ${(lastCallSummary.pain_points||[]).join('; ')}\n\nGoals: ${(lastCallSummary.goals||[]).join('; ')}\n\nObjections: ${(lastCallSummary.objections||[]).join('; ')}\n\nNext Steps: ${(lastCallSummary.next_steps||[]).join('; ')}`;
-  try{
-    await HUBSPOT.logCall(lead.hubspot_contact_id, body);
-    toast('Call notes logged to HubSpot.','success');
-  }catch(e){
-    toast('Could not log to HubSpot (likely CORS from the browser, or an invalid key).','error');
-  }
-}
-async function saveCallNotes(){
-  if(!lastCallSummary){ toast('Process a call first.','error'); return; }
-  const lead = allLeadsCache.find(l=>l.business_name===lastCallSummary.leadName);
-  await CallNotesDB.insert({
-    lead_id: lead ? lead.id : null,
-    lead_name: lastCallSummary.leadName || '',
-    call_type: lastCallSummary.callType,
-    call_date: lastCallSummary.callDate,
-    caller_name: lastCallSummary.callerName,
-    duration: lastCallSummary.duration,
-    raw_notes: lastCallSummary.notes,
-    call_overview: lastCallSummary.call_overview,
-    pain_points: lastCallSummary.pain_points,
-    goals: lastCallSummary.goals,
-    objections: lastCallSummary.objections,
-    services_to_propose: lastCallSummary.services_to_propose,
-    next_steps: lastCallSummary.next_steps,
-    recommended_value: lastCallSummary.recommended_value
-  });
-  toast('Call notes saved.','success');
-  await renderSavedCalls();
-}
-async function renderSavedCalls(){
-  const list = await CallNotesDB.getAll();
-  const wrap = document.getElementById('savedCallsList');
-  const empty = document.getElementById('savedCallsEmpty');
-  if(!wrap) return;
-  if(!list.length){ wrap.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  wrap.innerHTML = list.map(c=>`
-    <div class="list-item">
-      <div><div class="list-item-title">${escapeHtml(c.lead_name||'Unknown')}</div><div class="list-item-sub">${fmtDate(c.call_date)} · ${escapeHtml(c.call_type||'')}</div></div>
-      <button class="btn btn-sm" onclick="viewSavedCall('${c.id}')">View</button>
-    </div>`).join('');
-}
-async function viewSavedCall(id){
-  const c = (await CallNotesDB.getAll()).find(x=>x.id===id);
-  if(!c) return;
-  const html = renderCallSummary({
-    call_overview: c.call_overview, callType: c.call_type, callerName: c.caller_name, callDate: c.call_date, duration: c.duration,
-    pain_points: c.pain_points, goals: c.goals, objections: c.objections, services_to_propose: c.services_to_propose,
-    next_steps: c.next_steps, recommended_value: c.recommended_value
-  });
-  openModal(`${c.lead_name||'Call'} — ${fmtDate(c.call_date)}`, `<div class="proposal-view">${html}</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
-}
-
 /* ===================== FOLLOW-UP TRACKER ===================== */
 async function renderFollowupAlerts(){
   const followups = (await FollowupsDB.getAll()).filter(f=>!['Signed','Lost'].includes(f.status));
@@ -3333,74 +2200,16 @@ async function renderFollowupTable(){
       <td style="${overdue?'color:#c0334a;font-weight:700;':dueToday?'color:#a3690f;font-weight:700;':''}">${fmtDate(f.next_date)}</td>
       <td><span class="badge" style="background:var(--bg-tertiary);">${f.status}</span></td>
       <td><div class="actions-cell">
-        <button class="btn btn-sm btn-pink" onclick="openFollowUpNowModal('${f.id}')" ${['Signed','Lost'].includes(f.status)?'disabled':''}>Follow Up Now</button>
+        <button class="btn btn-sm btn-pink" onclick="markFollowupSent('${f.id}')" ${['Signed','Lost'].includes(f.status)?'disabled':''}>Mark as Sent</button>
         ${prosperoOn ? `<button class="btn btn-sm" onclick="sendAgreementViaProspero('${f.id}')">Send Agreement</button>` : ''}
       </div></td>
     </tr>`;
   }).join('');
   await renderFollowupAlerts();
 }
-function followupToneInstruction(count){
-  if(count<=0) return "This is the first follow-up. Write a warm, low-key check-in.";
-  if(count===1) return "This is the second follow-up. Add value — share a relevant insight, quick tip, or mini case study relevant to their practice type.";
-  if(count===2) return "This is the third follow-up. Create gentle urgency without being pushy or salesy.";
-  return "This is follow-up number "+(count+1)+". Write a final, respectful check-in that offers to answer any remaining questions and leaves the door open.";
-}
-async function openFollowUpNowModal(id){
-  const followups = await FollowupsDB.getAll();
-  const f = followups.find(x=>x.id===id);
-  const leads = await LeadsDB.getAll();
-  const lead = leads.find(l=>l.id===f.lead_id) || {};
-  openModal(`Follow Up — ${f.business_name}`, `<div class="ai-loading">Drafting follow-up with Claude...</div>`, `<button class="btn" onclick="closeModal()">Close</button>`);
-  const key = localStorage.getItem('anthropic_key');
-  if(!key){
-    updateModalBody(`<p class="muted" style="margin-bottom:12px;">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</p><textarea id="aiDraftText" rows="10"></textarea>`);
-    updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="followupSendBtn" onclick="sendFollowupDraftEmail('${id}','${f.lead_id||''}')">Send</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
-    return;
-  }
-  const result = await callClaude(
-    await buildSystemPrompt("Task: Draft a follow-up message for a prospect who was sent a "+f.type+"."),
-    `Lead/business: ${f.business_name}\nContact: ${f.contact_name||lead.contact_name||''}\nPractice type: ${lead.practice_type||'n/a'}\nWhat was sent: ${f.type}\nDate sent: ${fmtDate(f.sent_date)}\nFollow-up count so far: ${f.count}\nNotes: ${lead.notes||'None'}\n\n${followupToneInstruction(f.count)}\n\nWrite ONLY the follow-up message (with subject line if it's an email), no preamble.`
-  );
-  if(!result.ok){ updateModalBody(`<p style="color:#c0334a;">${escapeHtml(result.message)}</p>`); return; }
-  updateModalBody(`<textarea id="aiDraftText" rows="12">${escapeHtml(result.text)}</textarea>`);
-  updateModalFooter(`<button class="btn btn-secondary" onclick="copyTextareaContent('aiDraftText')">Copy</button><button class="btn btn-pink" id="followupSendBtn" onclick="sendFollowupDraftEmail('${id}','${f.lead_id||''}')">Send</button><button class="btn btn-pink" onclick="markFollowupSent('${id}')">Mark as Sent</button><button class="btn" onclick="closeModal()">Close</button>`);
-}
-async function sendFollowupDraftEmail(followupId, leadId){
-  const draftEl = document.getElementById('aiDraftText');
-  if(!draftEl) return;
-  if(!leadId){ toast('This follow-up has no linked lead on file — cannot send.','error'); return; }
-  const raw = draftEl.value;
-  const subjectMatch = raw.match(/^Subject:\s*(.+)$/mi);
-  const subject = subjectMatch ? subjectMatch[1].trim() : 'A follow-up from Social Practice';
-  const body = subjectMatch ? raw.replace(/^Subject:.*$/mi, '').trim() : raw.trim();
-  if(!body){ toast('Nothing to send — write a message first.','error'); return; }
-
-  const btn = document.getElementById('followupSendBtn');
-  const originalLabel = btn ? btn.textContent : '';
-  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
-
-  const supabaseUrl = getSupabaseUrl();
-  const anonKey = getSupabaseAnonKey();
-  try{
-    const res = await fetch(`${supabaseUrl}/functions/v1/send-lead-email`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
-      body: JSON.stringify({ leadId, subject, body })
-    });
-    const data = await res.json();
-    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
-    await markFollowupSent(followupId);
-  }catch(e){
-    toast('Could not send the email — is send-lead-email deployed and Gmail connected? ('+e.message+')','error');
-    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
-  }
-}
 async function markFollowupSent(id){
   const followups = await FollowupsDB.getAll();
   const f = followups.find(x=>x.id===id);
-  const draftEl = document.getElementById('aiDraftText');
-  const draftText = draftEl ? draftEl.value : (window.__lastAiDraftText || '');
   const t = todayISO();
   await FollowupsDB.update(id, { count: (f.count||0)+1, next_date: addBusinessDays(t,2), status:'Followed Up', sent_date: t });
   let lead = null;
@@ -3408,414 +2217,16 @@ async function markFollowupSent(id){
     await LeadsDB.update(f.lead_id, { last_contact: t });
     lead = (await LeadsDB.getAll()).find(l=>l.id===f.lead_id);
   }
-  closeModal();
-  toast('Follow-up sent — next one scheduled.','success');
+  toast('Follow-up marked as sent — next one scheduled.','success');
   await renderFollowupTable();
   await refreshPipeline();
   if(HUBSPOT.isReady() && lead && lead.hubspot_contact_id){
-    try{ await HUBSPOT.logEmail(lead.hubspot_contact_id, `${f.type} follow-up`, draftText); }
+    try{ await HUBSPOT.logEmail(lead.hubspot_contact_id, `${f.type} follow-up`, `${f.type} follow-up marked as sent (follow-up #${f.count+1}).`); }
     catch(e){ console.warn('HubSpot follow-up log failed:', e); }
   }
 }
 function sendAgreementViaProspero(id){
   toast('Prospero agreement sending requires an authenticated API session — wired for connection once Prospero OAuth is completed.','error');
-}
-
-/* ===================== EMBEDDED CHAT WIDGETS ===================== */
-const CHAT_LABELS = { pipeline:'Sales Pipeline', inbox:'Inbox Manager', dm:'DM Manager', proposal:'Proposal Builder', callnotes:'Call Notes', followup:'Follow-Up Tracker' };
-function initChatWidgets(){
-  Object.keys(CHAT_LABELS).forEach(key=>{
-    document.getElementById('chat-container-'+key).innerHTML = `
-    <div class="chat-widget">
-      <div class="chat-header">✦ Ask Claude — ${CHAT_LABELS[key]}</div>
-      <div class="chat-messages" id="chat-messages-${key}"><div class="chat-empty">Ask a question or give an instruction about this tab.</div></div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input-${key}" placeholder="Ask about ${CHAT_LABELS[key].toLowerCase()}..." onkeydown="if(event.key==='Enter') sendChatMessage('${key}')">
-        <label class="chat-upload-btn" title="Attach file">📎<input type="file" id="chat-file-${key}" style="display:none;" onchange="handleFileUpload('chat-file-${key}','chat-input-${key}','chat-${key}')"></label>
-        <button class="btn btn-pink btn-sm" onclick="sendChatMessage('${key}')">Send</button>
-      </div>
-    </div>`;
-  });
-}
-async function buildChatContext(key){
-  if(key==='pipeline'){
-    const leads = await LeadsDB.getAll();
-    return `Current pipeline: ${leads.length} leads. Breakdown by stage: ${STAGES.map(s=>`${s}: ${leads.filter(l=>l.stage===s).length}`).join(', ')}. Leads: ${leads.map(l=>`${l.business_name} (${l.stage}, ${fmtMoney(l.proposal_value)}/mo)`).join('; ')}`;
-  }
-  if(key==='inbox') return lastInboxProcessed ? `Last processed email — category: ${lastInboxProcessed.category}, summary: ${lastInboxProcessed.sender_summary}` : 'No email processed yet in this session.';
-  if(key==='dm') return `Currently viewing ${currentDmPlatform} DMs. This tab drafts replies in Mary's voice — it is not a lead source.`;
-  if(key==='proposal') return lastProposalText ? `Current proposal draft in progress for ${document.getElementById('pBusinessName').value}:\n${lastProposalText.slice(0,1500)}` : 'No proposal generated yet in this session.';
-  if(key==='callnotes') return lastCallSummary ? `Last processed call — lead: ${lastCallSummary.leadName}, type: ${lastCallSummary.callType}, overview: ${lastCallSummary.call_overview}` : 'No call has been processed yet in this session.';
-  if(key==='followup'){
-    const followups = await FollowupsDB.getAll();
-    const t = todayISO();
-    const overdue = followups.filter(f=>f.next_date<t);
-    return `${followups.length} active follow-ups. ${overdue.length} overdue: ${overdue.map(f=>f.business_name).join(', ')}`;
-  }
-  return '';
-}
-/* ===================== CHAT-BASED DELETE CONFIRMATION ===================== */
-/* Config-driven record type per chat-enabled tab. One shared view/edit/delete
-   pipeline (resolveChatTarget/executeChatAction below) reasons about whichever
-   table `key` maps to here — never crosses tab boundaries. `inbox` has no
-   persistent table and isn't listed, so it's automatically excluded and keeps
-   its original descriptive-only behavior. */
-const CHAT_RECORD_CONFIG = {
-  pipeline: {
-    db: LeadsDB,
-    label: r => `${r.contact_name||'(no contact name)'} from ${r.business_name||'(no business name)'}`,
-    editableFields: ['business_name','contact_name','email','phone','practice_type','location','proposal_value','notes'],
-    numericFields: ['proposal_value'],
-    // Leads-specific concept — never offered as an intent option, or checked
-    // for, on any other tab's config. See resolveChatTarget/sendChatMessage.
-    supportsBulkDedupe: true,
-    // Belt-and-suspenders only — the prompt in resolveChatTarget already
-    // lists the exact editable field names and constrains Claude to them,
-    // and that's confirmed working. This just catches it cheaply if Claude
-    // ever answers with a natural synonym instead of the literal column name.
-    fieldSynonyms: { budget:'proposal_value', value:'proposal_value', price:'proposal_value', cost:'proposal_value', company:'business_name', business:'business_name', name:'contact_name', contact:'contact_name' },
-    viewFields: [
-      ['Business', r=>r.business_name], ['Contact', r=>r.contact_name], ['Email', r=>r.email], ['Phone', r=>r.phone],
-      ['Stage', r=>r.stage], ['Qualification', r=>r.qualified===true?`Qualified${r.qualification_score!=null?' · '+r.qualification_score:''}`:r.qualified===false?'Not Qualified':'Not yet scored'],
-      ['Practice Type', r=>r.practice_type], ['Location', r=>r.location], ['Value', r=>fmtMoney(r.proposal_value)+'/mo'],
-      ['Source', r=>r.source], ['Last Contact', r=>fmtDate(r.last_contact)], ['Next Follow-Up', r=>fmtDate(r.next_followup)], ['Notes', r=>r.notes],
-    ],
-    async remove(id){ await deleteLeadCascade(id); },
-    async afterChange(){ await refreshPipeline(); await renderFollowupTable(); await renderSavedProposals(); },
-  },
-  proposal: {
-    db: ProposalsDB,
-    label: r => `the proposal for ${r.business_name||'a lead'} (${new Date(r.created_at).toLocaleDateString()})`,
-    editableFields: ['content','value','status'],
-    numericFields: ['value'],
-    fieldSynonyms: { budget:'value', price:'value', amount:'value' },
-    viewFields: [
-      ['Business', r=>r.business_name||'—'], ['Value', r=>fmtMoney(r.value)+'/mo'], ['Status', r=>r.status],
-      ['Created', r=>new Date(r.created_at).toLocaleDateString()],
-      ['Content', r=>(r.content||'').length>300 ? r.content.slice(0,300)+'…' : (r.content||'')],
-    ],
-    async remove(id){ await ProposalsDB.remove(id); },
-    async afterChange(){ await renderSavedProposals(); },
-  },
-  callnotes: {
-    db: CallNotesDB,
-    label: r => `the call notes for ${r.lead_name||'a lead'} on ${fmtDate(r.call_date)}`,
-    editableFields: ['call_type','call_date','caller_name','duration','raw_notes','call_overview'],
-    viewFields: [
-      ['Lead', r=>r.lead_name], ['Call Type', r=>r.call_type], ['Date', r=>fmtDate(r.call_date)],
-      ['Caller', r=>r.caller_name], ['Duration', r=>r.duration], ['Overview', r=>r.call_overview],
-    ],
-    async remove(id){ await CallNotesDB.remove(id); },
-    async afterChange(){ await renderSavedCalls(); },
-  },
-  followup: {
-    db: FollowupsDB,
-    label: r => `the ${r.type||'follow-up'} follow-up for ${r.business_name||'a lead'}`,
-    editableFields: ['type','next_date','status'],
-    viewFields: [
-      ['Business', r=>r.business_name], ['Contact', r=>r.contact_name], ['Type', r=>r.type],
-      ['Sent', r=>fmtDate(r.sent_date)], ['Count', r=>r.count], ['Next Date', r=>fmtDate(r.next_date)], ['Status', r=>r.status],
-    ],
-    async remove(id){ await FollowupsDB.remove(id); },
-    async afterChange(){ await renderFollowupTable(); },
-  },
-  dm: {
-    db: DmLogDB,
-    label: r => `the ${r.platform||'DM'}${r.sender ? ' from '+r.sender : ''}`,
-    editableFields: ['reply'],
-    viewFields: [
-      ['Platform', r=>r.platform], ['Sender', r=>r.sender], ['Message', r=>r.message], ['Reply', r=>r.reply],
-      ['Processed', r=>r.processed_at ? new Date(r.processed_at).toLocaleString() : ''],
-    ],
-    async remove(id){ await DmLogDB.remove(id); },
-    async afterChange(){ renderDmPanels(); },
-  },
-};
-let chatPendingAction = {};
-function looksLikeRecordAction(msg){
-  return /\b(delete|remove|get rid of|erase|trash|change|update|edit|correct|fix|set|rename|show me|show|pull up|what do we have|what's|whats|tell me about|look ?up|find|duplicate|dedupe|dedup|merge|clean ?up)\b/i.test(msg);
-}
-function isConfirmReply(msg){
-  const m = msg.trim().toLowerCase();
-  return /^(yes|y|yep|yeah|yup|confirm|confirmed|delete it|do it|go ahead|proceed)\b/.test(m);
-}
-function isCancelReply(msg){
-  const m = msg.trim().toLowerCase();
-  return /^(no|n|nope|cancel|stop|nevermind|never mind|don'?t|do not)\b/.test(m);
-}
-function buildDeleteConfirmMessage(key, match){
-  if(key === 'pipeline'){
-    return `I'm about to permanently delete ${match.matched_label}. This will also remove all their communications history, proposals, and follow-up entries. This cannot be undone. Type YES to confirm or NO to cancel.`;
-  }
-  return `I'm about to permanently delete ${match.matched_label}. This cannot be undone. Type YES to confirm or NO to cancel.`;
-}
-function buildEditConfirmMessage(match, oldValue){
-  const oldDisplay = (oldValue===undefined || oldValue===null || oldValue==='') ? '(empty)' : oldValue;
-  return `Change ${match.field} for ${match.matched_label} from ${oldDisplay} to ${match.new_value}? Type YES to confirm or NO to cancel.`;
-}
-/* Bulk duplicate cleanup — pipeline/leads only. Reuses the exact same two
-   match criteria already established in saveNewLead()/sync-hubspot-leads:
-   (a) exact case-insensitive email match, (b) same contact_name + same
-   business_name + same proposal_value (case-insensitive on text fields,
-   guarded against blank contact_name to avoid clustering unrelated blanks).
-   Clusters merge transitively via union-find, so A~B (by email) + B~C (by
-   the soft match) puts all three in one group even though A and C never
-   matched each other directly. */
-function leadsAreDuplicates(a, b){
-  const emailA = (a.email||'').trim().toLowerCase();
-  const emailB = (b.email||'').trim().toLowerCase();
-  if(emailA && emailB && emailA===emailB) return true;
-  const contactA = (a.contact_name||'').trim().toLowerCase();
-  if(!contactA) return false;
-  const contactB = (b.contact_name||'').trim().toLowerCase();
-  const bizA = (a.business_name||'').trim().toLowerCase();
-  const bizB = (b.business_name||'').trim().toLowerCase();
-  return contactA===contactB && bizA && bizA===bizB && Number(a.proposal_value||0)===Number(b.proposal_value||0);
-}
-function findDuplicateClusters(leads){
-  const parent = leads.map((_, i)=>i);
-  function find(i){ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; }
-  function union(i, j){ const ri=find(i), rj=find(j); if(ri!==rj) parent[ri]=rj; }
-  for(let i=0;i<leads.length;i++){
-    for(let j=i+1;j<leads.length;j++){
-      if(leadsAreDuplicates(leads[i], leads[j])) union(i, j);
-    }
-  }
-  const groups = {};
-  leads.forEach((lead, i)=>{
-    const root = find(i);
-    (groups[root] = groups[root] || []).push(lead);
-  });
-  return Object.values(groups).filter(g=>g.length>=2);
-}
-function fmtShortDate(dateStr){
-  if(!dateStr) return 'unknown date';
-  try{ return new Date(dateStr).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
-  catch(e){ return dateStr; }
-}
-function buildDedupeClusterInfo(cluster){
-  const sorted = [...cluster].sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
-  const keep = sorted[0];
-  const toDelete = sorted.slice(1);
-  const stagesDiffer = new Set(cluster.map(c=>c.stage)).size > 1;
-  const notesDiffer = new Set(cluster.map(c=>(c.notes||'').trim())).size > 1;
-  return { keep, toDelete, stagesDiffer, notesDiffer };
-}
-function buildBulkDedupeConfirmMessage(clusterInfos){
-  let totalDeletes = 0;
-  const lines = clusterInfos.map((info, i)=>{
-    totalDeletes += info.toDelete.length;
-    const label = `${info.keep.business_name} (${info.keep.contact_name})`;
-    const copies = info.toDelete.length + 1;
-    let line = `${i+1}. ${label} — ${copies} copies found.\n   Keeping the earliest (created ${fmtShortDate(info.keep.created_at)}), deleting ${info.toDelete.length} duplicate${info.toDelete.length>1?'s':''}.`;
-    const warnings = [];
-    if(info.stagesDiffer) warnings.push('stages differ across copies');
-    if(info.notesDiffer) warnings.push('notes differ across copies');
-    if(warnings.length) line += `\n   ⚠ Note: ${warnings.join('; ')} — review before confirming.`;
-    return line;
-  }).join('\n');
-  return { text: `Found ${clusterInfos.length} duplicate group${clusterInfos.length>1?'s':''}:\n\n${lines}\n\nThis will delete ${totalDeletes} lead${totalDeletes>1?'s':''} total. Type YES to confirm or NO to cancel.`, totalDeletes };
-}
-function renderRecordView(config, record){
-  return config.viewFields.map(([label, accessor])=>{
-    const value = accessor(record);
-    return `${label}: ${(value===undefined||value===null||value==='') ? '—' : value}`;
-  }).join('\n');
-}
-async function resolveChatTarget(key, msg){
-  const config = CHAT_RECORD_CONFIG[key];
-  if(!config) return null;
-  const records = await config.db.getAll();
-  if(!records.length) return null;
-  const candidates = records.map(r=>({ id:r.id, label:config.label(r) }));
-  const intentOptions = config.supportsBulkDedupe ? '"view", "edit", "delete", "bulk_dedupe", "none"' : '"view", "edit", "delete", "none"';
-  const bulkDedupeNote = config.supportsBulkDedupe
-    ? ' Use "bulk_dedupe" when the user asks to clean up, merge, or remove duplicate leads IN GENERAL (e.g. "delete duplicates", "clean up duplicate leads", "merge duplicates") WITHOUT naming one specific lead — this is different from "delete", which is only for a single named record. When intent is "bulk_dedupe", matched_id and matched_label must both be null, since no single record is being matched.'
-    : '';
-  const result = await callClaude(
-    'You identify what a user wants to do with a record (view it, edit a field, or delete it), matched against a list of candidate records. Respond with ONLY valid JSON, no markdown fences, no explanation.',
-    `User message: "${msg}"\n\nCandidate records (id | label):\n${candidates.map(c=>`${c.id} | ${c.label}`).join('\n')}\n\nEditable fields for this record type (only relevant if intent is "edit"): ${config.editableFields.join(', ')}\n\nReturn JSON with exactly these keys: intent (one of ${intentOptions} — use "none" if the message isn't actually asking to view, change, or remove one of these records).${bulkDedupeNote} matched_id (the id string of the single candidate they mean, or null if unclear/no match/not applicable), matched_label (the label of the matched candidate, or null), field (only set when intent is "edit" — must be exactly one of the editable fields listed above, else null), new_value (only set when intent is "edit" — the new value as a plain string, else null).`
-  );
-  if(!result.ok){
-    // This was the actual gap: an API-level failure (rate limit, network
-    // blip, key issue) returned null exactly like a JSON-parse failure, but
-    // silently — no log at all, unlike the parse-failure path below which
-    // already logs. From the UI this looked identical to "Claude returned
-    // garbage" with zero way to tell the two apart.
-    console.error('resolveChatTarget: Claude call failed —', result.message);
-    return null;
-  }
-  const parsed = extractJsonObject(result.text);
-  if(parsed && parsed.intent==='edit' && (!parsed.field || !parsed.new_value)){
-    console.error('resolveChatTarget: edit intent but missing field/new_value —', result.text);
-  }
-  return parsed;
-}
-async function executeChatAction(key, pending){
-  const config = CHAT_RECORD_CONFIG[key];
-  if(pending.type === 'delete'){
-    const records = await config.db.getAll();
-    const record = records.find(r=>r.id===pending.id);
-    await config.remove(pending.id);
-    await config.afterChange();
-    return record ? config.label(record) : pending.label;
-  }
-  if(pending.type === 'edit'){
-    let value = pending.newValue;
-    if(config.numericFields && config.numericFields.includes(pending.field)){
-      const n = Number(value);
-      if(!Number.isNaN(n)) value = n;
-    }
-    await config.db.update(pending.id, { [pending.field]: value });
-    await config.afterChange();
-    return pending.label;
-  }
-  if(pending.type === 'bulk_dedupe'){
-    let deletedCount = 0;
-    for(const cluster of pending.clusters){
-      for(const id of cluster.deleteIds){
-        await deleteLeadCascade(id); // same cascade as the single-delete path — comm_log/proposals/followups included
-        deletedCount++;
-      }
-    }
-    await refreshPipeline();
-    await renderFollowupTable();
-    await renderSavedProposals();
-    return { deletedCount, groupCount: pending.clusters.length };
-  }
-  return pending.label;
-}
-async function sendChatMessage(key){
-  const input = document.getElementById('chat-input-'+key);
-  const msg = input.value.trim();
-  if(!msg) return;
-  input.value='';
-  const messagesEl = document.getElementById('chat-messages-'+key);
-  const emptyEl = messagesEl.querySelector('.chat-empty');
-  if(emptyEl) emptyEl.remove();
-  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg user">${escapeHtml(msg)}</div>`);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-
-  if(chatPendingAction[key]){
-    const pending = chatPendingAction[key];
-    if(isConfirmReply(msg)){
-      delete chatPendingAction[key];
-      const result = await executeChatAction(key, pending);
-      if(pending.type==='delete'){
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(result)} has been deleted.</div>`);
-        toast(`${result} has been deleted`,'success');
-      } else if(pending.type==='bulk_dedupe'){
-        const text = `Deleted ${result.deletedCount} duplicate lead${result.deletedCount>1?'s':''} across ${result.groupCount} group${result.groupCount>1?'s':''}.`;
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text)}</div>`);
-        toast(text,'success');
-      } else {
-        const text = `Updated ${pending.field} for ${result}.`;
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text)}</div>`);
-        toast(text,'success');
-      }
-    } else if(isCancelReply(msg)){
-      delete chatPendingAction[key];
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Got it, no changes were made.</div>`);
-    } else {
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Please reply YES to confirm or NO to cancel.</div>`);
-    }
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    return;
-  }
-
-  const key2 = localStorage.getItem('anthropic_key');
-  if(!key2){
-    messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">Add your Anthropic API key in Settings to enable AI features. You can still use the system manually.</div>`);
-    return;
-  }
-
-  const chatConfig = CHAT_RECORD_CONFIG[key];
-  if(chatConfig && looksLikeRecordAction(msg)){
-    const loadingId1 = 'load-'+Date.now();
-    messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai" id="${loadingId1}">Thinking...</div>`);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    const match = await resolveChatTarget(key, msg);
-    document.getElementById(loadingId1).remove();
-
-    if(!match){
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't tell what to change — try being more specific.</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if(match.field && !chatConfig.editableFields.includes(match.field) && chatConfig.fieldSynonyms && chatConfig.fieldSynonyms[match.field.trim().toLowerCase()]){
-      match.field = chatConfig.fieldSynonyms[match.field.trim().toLowerCase()];
-    }
-    if(match.intent==='bulk_dedupe' && chatConfig.supportsBulkDedupe){
-      const leads = await chatConfig.db.getAll();
-      const clusterInfos = findDuplicateClusters(leads).map(buildDedupeClusterInfo);
-      if(!clusterInfos.length){
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">No duplicates found — your pipeline looks clean.</div>`);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        return;
-      }
-      chatPendingAction[key] = {
-        type: 'bulk_dedupe', key,
-        clusters: clusterInfos.map(info => ({
-          keepId: info.keep.id,
-          deleteIds: info.toDelete.map(l=>l.id),
-          label: `${info.keep.business_name} (${info.keep.contact_name})`,
-        })),
-      };
-      const { text } = buildBulkDedupeConfirmMessage(clusterInfos);
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(text).replace(/\n/g,'<br>')}</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if(match.intent==='delete' && match.matched_id){
-      chatPendingAction[key] = { type:'delete', key, id: match.matched_id, label: match.matched_label };
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildDeleteConfirmMessage(key, match))}</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if(match.intent==='edit' && match.matched_id && match.field && chatConfig.editableFields.includes(match.field)){
-      const records = await chatConfig.db.getAll();
-      const record = records.find(r=>r.id===match.matched_id);
-      const oldValue = record ? record[match.field] : '';
-      chatPendingAction[key] = { type:'edit', key, id: match.matched_id, label: match.matched_label, field: match.field, newValue: match.new_value, oldValue };
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(buildEditConfirmMessage(match, oldValue))}</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if(match.intent==='edit' && match.matched_id){
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I can't change that field through chat — try one of: ${escapeHtml(chatConfig.editableFields.join(', '))}.</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if(match.intent==='view' && match.matched_id){
-      const records = await chatConfig.db.getAll();
-      const record = records.find(r=>r.id===match.matched_id);
-      if(record){
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(renderRecordView(chatConfig, record)).replace(/\n/g,'<br>')}</div>`);
-      } else {
-        messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find that record anymore — it may have been deleted.</div>`);
-      }
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    if((match.intent==='delete' || match.intent==='edit' || match.intent==='view') && !match.matched_id){
-      messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">I couldn't find a specific match for that — could you be more specific?</div>`);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return;
-    }
-    // intent === 'none' -> not actually a view/edit/delete request, fall through to the generic response below
-  }
-
-  const loadingId = 'load-'+Date.now();
-  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai" id="${loadingId}">Thinking...</div>`);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  const context = await buildChatContext(key);
-  const result = await callClaude(
-    await buildSystemPrompt(`You are embedded in the ${CHAT_LABELS[key]} tab. Use the tab context below to answer or take the requested action (describe what you would do, since you cannot directly click buttons in the UI).\n\nTab context:\n${context}`),
-    buildUserContent(msg, 'chat-'+key)
-  );
-  document.getElementById(loadingId).remove();
-  messagesEl.insertAdjacentHTML('beforeend', `<div class="chat-msg ai">${escapeHtml(result.ok ? result.text : result.message)}</div>`);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 /* ===================== INIT ===================== */
@@ -3828,15 +2239,10 @@ async function init(){
   populateFilterOptions();
   await seedIfEmpty();
   await refreshPipeline();
-  renderDmPanels();
   await renderInboxHistory();
   await renderRescheduleFlags();
-  await renderSavedProposals();
   await renderFollowupTable();
-  await renderSavedCalls();
-  populateCallLeadOptions();
   refreshConnectionSlots();
-  initChatWidgets();
   renderConnStatusTable();
   handleGmailOAuthRedirect();
 }

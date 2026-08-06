@@ -38,9 +38,9 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Turns a plain-text email body (the kind every caller here already builds,
-// from a Claude draft or plain string concatenation) into safe, minimal
-// HTML: escapes special characters, then converts newlines to <br> so
+// Turns a plain-text email body (the kind every caller here already builds
+// via plain string templates) into safe, minimal HTML: escapes special
+// characters, then converts newlines to <br> so
 // paragraphs/line breaks actually render instead of collapsing into one
 // wall of text. Deliberately no template, styling, or logo — that's held
 // for later once Mary's brand assets are available. Callers that need a
@@ -51,18 +51,18 @@ export function textToHtmlBody(text: string): string {
   return escapeHtml(text).replace(/\r\n|\n/g, '<br>\n');
 }
 
-// The exact marker callers should instruct Claude to use in place of a raw
-// URL — see bodyWithLink below for why.
+// The exact marker email templates should embed in place of a raw URL —
+// see bodyWithLink below for why.
 export const LINK_MARKER = '[click here]';
 
-// For drafted emails that reference a link (the questionnaire link, so
-// far) — asking Claude to paste a raw URL into a plain-text-style draft is
-// fragile and renders as an ugly auto-linkified string rather than a clean
-// hyperlink. Instead, the drafting prompt tells Claude to write the
-// LINK_MARKER inline (e.g. "Please [click here] to fill out the form"),
-// and this swaps it for a real anchor tag after escaping the rest of the
-// body. If Claude ignores the instruction and the marker never shows up,
-// the link is appended as a fallback sentence instead of silently dropped.
+// For templated emails that reference a link (the questionnaire link, so
+// far) — pasting a raw URL into a plain-text-style template is fragile and
+// renders as an ugly auto-linkified string rather than a clean hyperlink.
+// Instead, the template writes the LINK_MARKER inline (e.g. "Please [click
+// here] to fill out the form"), and this swaps it for a real anchor tag
+// after escaping the rest of the body. If the marker is missing from the
+// body for any reason, the link is appended as a fallback sentence instead
+// of silently dropped.
 export function bodyWithLink(text: string, link: string): string {
   const anchor = `<a href="${link}">click here</a>`;
   const html = textToHtmlBody(text);

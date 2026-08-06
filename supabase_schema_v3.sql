@@ -7,8 +7,8 @@
 -- Run this AFTER supabase_schema.sql and supabase_schema_v2.sql.
 -- ============================================================
 
--- ---- API credentials (Anthropic, HubSpot, Read.ai, Gmail) ----
--- key_name: 'anthropic' | 'hubspot' | 'readai' | 'gmail'
+-- ---- API credentials (HubSpot, Read.ai, Gmail) ----
+-- key_name: 'hubspot' | 'readai' | 'gmail'
 -- key_value: the API key, or (for gmail) the OAuth refresh token
 -- meta: small extra bits that don't fit key_value — currently only used
 --       to remember which Gmail account is connected (meta->>'email')

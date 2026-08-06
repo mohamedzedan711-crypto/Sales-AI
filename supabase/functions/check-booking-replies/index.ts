@@ -3,10 +3,14 @@
 // confirmation auto-locks the proposed time in; anything proposing a
 // different time gets written to reschedule_flags instead of being
 // auto-rescheduled — a human locks that in from the Inbox Manager.
+//
+// Classification is deterministic keyword matching (no LLM call) — reschedule
+// keywords are checked first since misclassifying a reschedule request as a
+// confirmation is worse than the reverse. This is less nuanced than an LLM
+// read of the email and may need its keyword lists tuned against real replies.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { listGmailReplies } from '../_shared/gmail.ts';
-import { callClaude, stripJsonFence } from '../_shared/claude.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
@@ -23,11 +27,31 @@ function decodeBody(payload: any): string {
   }
 }
 
+const RESCHEDULE_KEYWORDS = [
+  'reschedule', 'different time', 'another time', 'other time', "can't make",
+  'cannot make', "doesn't work", 'does not work', 'conflict', 'push it back',
+  'move it', 'different day', 'another day', 'change the time', 'push back',
+];
+const CONFIRM_KEYWORDS = [
+  'confirm', 'confirmed', 'sounds good', 'works for me', 'that works',
+  'see you then', 'perfect', "i'll be there", 'looking forward', 'works great',
+];
+
+function classifyReply(bodyText: string): { type: 'confirms_time' | 'requests_different_time' | 'unrelated'; summary: string } {
+  const text = bodyText.toLowerCase();
+  if (RESCHEDULE_KEYWORDS.some((k) => text.includes(k))) {
+    return { type: 'requests_different_time', summary: 'Reply contains reschedule-related keywords.' };
+  }
+  if (CONFIRM_KEYWORDS.some((k) => text.includes(k))) {
+    return { type: 'confirms_time', summary: 'Reply contains confirmation keywords.' };
+  }
+  return { type: 'unrelated', summary: 'No confirmation or reschedule keywords detected.' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    const anthropicCred = await requireCredential(supabaseAdmin, 'anthropic', 'Claude (Anthropic)');
     const gmailCred = await requireCredential(supabaseAdmin, 'gmail', 'Gmail');
 
     const { data: leads } = await supabaseAdmin
@@ -49,23 +73,7 @@ Deno.serve(async (req) => {
       const bodyText = decodeBody(latest.payload);
       if (!bodyText) continue;
 
-      const result = await callClaude(
-        anthropicCred.value,
-        'You are classifying an email reply about a proposed meeting time. Return ONLY valid JSON, no markdown fences, with keys: type ("confirms_time" | "requests_different_time" | "unrelated"), summary (one sentence describing what they said).',
-        `Email reply:\n${bodyText}`
-      );
-      let parsed: any;
-      try {
-        parsed = JSON.parse(stripJsonFence(result));
-      } catch {
-        await logAutomationFailure(
-          supabaseAdmin,
-          'check-booking-replies',
-          `Could not parse Claude's classification of a reply from ${lead.email} — reply was left unhandled, needs a manual look.`,
-          lead.id
-        );
-        continue;
-      }
+      const parsed = classifyReply(bodyText);
 
       if (parsed.type === 'confirms_time') {
         await supabaseAdmin

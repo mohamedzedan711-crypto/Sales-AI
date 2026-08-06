@@ -1,12 +1,20 @@
 // Scheduled via pg_cron (see DEPLOYMENT.md). Pulls new HubSpot contacts,
 // creates a lead + a unique questionnaire link for each, and emails it.
+// The email body is a static template (no LLM call) as of the deterministic-
+// automation redesign — see send-questionnaire-email for the identical
+// template used on every other lead-creation path.
+//
+// AUTO-SEND KILL SWITCH: lead creation (the deterministic HubSpot sync
+// itself) always runs regardless of this setting — only the questionnaire
+// email is gated. When auto-send is off, questionnaire_token/
+// questionnaire_sent_at are left null on the new row instead of being set
+// optimistically, so the row doesn't falsely look "already sent".
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { getHubspotContacts } from '../_shared/hubspot.ts';
-import { callClaude } from '../_shared/claude.ts';
-import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
 import { sendGmail, bodyWithLink, LINK_MARKER } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
+import { isAutoSendEnabled } from '../_shared/autoSend.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
 
@@ -15,9 +23,17 @@ Deno.serve(async (req) => {
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const hubspotCred = await requireCredential(supabaseAdmin, 'hubspot', 'HubSpot');
-    const anthropicCred = await requireCredential(supabaseAdmin, 'anthropic', 'Claude (Anthropic)');
     const gmailCred = await requireCredential(supabaseAdmin, 'gmail', 'Gmail');
     if (!gmailCred.meta?.email) throw new Error('Gmail is connected but has no account email on file — reconnect in Settings.');
+
+    const autoSend = await isAutoSendEnabled(supabaseAdmin);
+    if (!autoSend) {
+      await logAutomationFailure(
+        supabaseAdmin,
+        'sync-hubspot-leads',
+        'Auto-send is disabled in Settings — new leads from this sync will not be emailed a questionnaire link automatically.'
+      );
+    }
 
     const contacts = await getHubspotContacts(hubspotCred.value);
 
@@ -27,7 +43,6 @@ Deno.serve(async (req) => {
     const existing = existingLeads || [];
 
     const baseUrl = (Deno.env.get('QUESTIONNAIRE_BASE_URL') || '').replace(/\/$/, '');
-    const voiceBlock = await getVoiceProfileBlock(supabaseAdmin);
     let created = 0;
     const errors: string[] = [];
 
@@ -95,8 +110,8 @@ Deno.serve(async (req) => {
           last_contact: new Date().toISOString().slice(0, 10),
           notes: 'Auto-synced from HubSpot; questionnaire sent.',
           hubspot_contact_id: c.id,
-          questionnaire_token: token,
-          questionnaire_sent_at: new Date().toISOString(),
+          questionnaire_token: autoSend ? token : null,
+          questionnaire_sent_at: autoSend ? new Date().toISOString() : null,
           duplicate_flag: inverseMatch ? inverseMatch.id : null,
         }])
         .select()
@@ -107,23 +122,23 @@ Deno.serve(async (req) => {
         await logAutomationFailure(supabaseAdmin, 'sync-hubspot-leads', `Could not create lead for HubSpot contact ${email}: ${insertError?.message}`);
         continue;
       }
+      created++;
+
+      if (!autoSend) continue;
 
       try {
         const link = `${baseUrl}/questionnaire.html?lead=${inserted.id}&token=${token}`;
-        const draft = await callClaude(
-          anthropicCred.value,
-          buildSystemPrompt(
-            `Task: Draft a short, warm email to a brand-new lead asking them to fill out a quick 3-minute questionnaire before their strategy call. Do NOT write out a URL — instead, weave the clickable phrase naturally into a sentence using this exact marker: ${LINK_MARKER} (for example: "Please ${LINK_MARKER} to fill out the form."). The marker will be automatically turned into a real link before sending.`,
-            voiceBlock
-          ),
-          `New lead: ${contactName || 'there'} from ${props.company || 'their practice'}. Write ONLY the email — first line "Subject: ..." then the body.`
-        );
-        const subjectMatch = draft.match(/^Subject:\s*(.+)$/mi);
-        const subject = subjectMatch ? subjectMatch[1].trim() : 'A few quick questions before we chat';
-        const body = draft.replace(/^Subject:.*$/mi, '').trim();
+        const subject = 'A few quick questions before we chat';
+        const body = `Hi ${contactName || 'there'},
+
+Thanks for reaching out! Before our call, it'd help to know a bit more about your practice and what you're looking for.
+
+Could you ${LINK_MARKER} answer a few quick questions? It only takes about 3 minutes.
+
+Talk soon,
+Social Practice`;
 
         await sendGmail(gmailCred.value, gmailCred.meta.email, props.email, subject, bodyWithLink(body, link));
-        created++;
       } catch (mailErr) {
         errors.push(`email failed for ${email}: ${String(mailErr)}`);
         await logAutomationFailure(

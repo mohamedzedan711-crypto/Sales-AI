@@ -5,7 +5,7 @@
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const KNOWN_KEYS = ['anthropic', 'hubspot', 'readai', 'gmail'];
+const KNOWN_KEYS = ['hubspot', 'readai', 'gmail'];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

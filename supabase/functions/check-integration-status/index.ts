@@ -12,11 +12,8 @@
 import { corsHeaders } from '../_shared/cors.ts';
 
 const SERVICE_ENV_VARS: Record<string, string> = {
-  anthropic: 'ANTHROPIC_API_KEY',
   hubspot: 'HUBSPOT_API_KEY',
   readai: 'READAI_API_KEY',
-  fathom: 'FATHOM_API_KEY',
-  monday: 'MONDAY_API_KEY',
 };
 
 Deno.serve(async (req) => {

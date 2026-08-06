@@ -1,37 +1,39 @@
-// Scheduled via pg_cron. Polls Read.ai AND Fathom for completed call
-// transcripts, matches each to a lead by attendee email, and appends it
-// to that lead's comm_log automatically — no manual copy-paste.
-//
-// Read.ai and Fathom are independent, parallel, both-optional credentials.
-// Fathom is being introduced alongside Read.ai, not replacing it — this
-// function pulls from whichever one(s) are connected; neither is required
-// on its own, only "at least one."
+// Scheduled via pg_cron. Polls Read.ai for completed call transcripts,
+// matches each to a lead by attendee email, and appends it to that lead's
+// comm_log automatically — no manual copy-paste. Read.ai is the sole
+// transcript source (Fathom support was removed entirely — no backend
+// code path, no credential lookup, no fetch).
 //
 // NOTETAKER -> HUBSPOT (Mary's stated #1 priority): after a transcript is
-// appended to comm_log, if HubSpot + Anthropic are both connected and the
-// lead has a hubspot_contact_id on file, Claude extracts structured call
-// info (summary, key details, next steps, budget/timeline signals) and
-// pushes it to HubSpot as a note on the contact — not just kept in our own
-// history log. This builds on the comm_log append above rather than
-// duplicating the transcript pull; it's a best-effort extra step per
-// session and never blocks the underlying transcript append if it fails
-// (missing credentials, no hubspot_contact_id, or a HubSpot API error).
+// appended to comm_log, if HubSpot is connected and the lead has a
+// hubspot_contact_id on file, the raw transcript text is pushed to HubSpot
+// as a note on the contact — not just kept in our own history log. This
+// builds on the comm_log append above rather than duplicating the transcript
+// pull; it's a best-effort extra step per session and never blocks the
+// underlying transcript append if it fails (missing credentials, no
+// hubspot_contact_id, or a HubSpot API error). No LLM summarization — the
+// note is the transcript text itself, truncated to a safe length.
 //
-// NOTE: Neither Read.ai's nor Fathom's exact endpoint path/response shape
-// is verified against official documentation — both are best-effort
-// guesses at a reasonable REST contract. Adjust the fetch URLs and field
-// names in fetchReadaiSessions/fetchFathomCalls once you have real API
-// access and can confirm the actual shape for each.
+// NOTE: Read.ai's exact endpoint path/response shape is not verified
+// against official documentation — it's a best-effort guess at a
+// reasonable REST contract. Adjust the fetch URL and field names in
+// fetchReadaiSessions once you have real API access and can confirm the
+// actual shape.
+//
+// AUTO-SEND KILL SWITCH: gates only the HubSpot note push below (a write to
+// an external system that could itself trigger a HubSpot workflow) — the
+// comm_log transcript append is our own internal history, not a "send", so
+// it always runs regardless of this setting.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { getCredential } from '../_shared/credentials.ts';
-import { callClaude, stripJsonFence } from '../_shared/claude.ts';
 import { createHubspotNote } from '../_shared/hubspot.ts';
+import { isAutoSendEnabled } from '../_shared/autoSend.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 interface NormalizedSession {
-  source: 'readai' | 'fathom';
+  source: 'readai';
   id: string;
   attendeeEmail: string;
   transcript: string;
@@ -54,55 +56,23 @@ async function fetchReadaiSessions(key: string): Promise<NormalizedSession[]> {
   }));
 }
 
-async function fetchFathomCalls(key: string): Promise<NormalizedSession[]> {
-  const res = await fetch('https://api.fathom.video/v1/calls?limit=25', {
-    headers: { Authorization: `Bearer ${key}` },
-  });
-  if (!res.ok) throw new Error('Fathom returned ' + res.status);
-  const data = await res.json();
-  const calls = data.calls || data.results || data.items || [];
-  return calls.map((call: any): NormalizedSession => ({
-    source: 'fathom',
-    id: call.id || call.call_id || '',
-    attendeeEmail: (call.invitees?.[0]?.email || call.attendees?.[0]?.email || '').toLowerCase(),
-    transcript: call.transcript || call.transcript_text || JSON.stringify(call).slice(0, 8000),
-    endedAt: call.ended_at || call.recording_end_time || new Date().toISOString(),
-  }));
-}
-
 async function pushNoteToHubspot(
   hubspotKey: string,
-  anthropicKey: string,
   lead: { hubspot_contact_id: string | null; hubspot_deal_id: string | null; business_name: string; contact_name: string },
-  transcript: string
+  transcript: string,
+  source: string
 ): Promise<void> {
   if (!lead.hubspot_contact_id) throw new Error('lead has no hubspot_contact_id on file');
 
-  const extraction = await callClaude(
-    anthropicKey,
-    'You are extracting structured notes from a sales call transcript for a medical aesthetics marketing agency, to log in HubSpot. Use ONLY what is actually in the transcript — never invent details.',
-    `Call transcript for ${lead.contact_name} at ${lead.business_name}:\n\n${transcript}\n\nReturn ONLY valid JSON (no markdown fences) with these keys: call_summary (2-3 sentences), key_details (array of short strings — specific things discussed), next_steps (array of short strings), budget_signal (one sentence, or "Not discussed" if unclear), timeline_signal (one sentence, or "Not discussed" if unclear).`,
-    900
-  );
-
-  let parsed: any;
-  try { parsed = JSON.parse(stripJsonFence(extraction)); }
-  catch { parsed = { call_summary: extraction.slice(0, 1000), key_details: [], next_steps: [], budget_signal: 'Not discussed', timeline_signal: 'Not discussed' }; }
-
+  const truncated = transcript.length > 4000;
   const noteBody = [
-    `Call Summary: ${parsed.call_summary || 'n/a'}`,
+    `Call transcript (${source}) — ${lead.contact_name} at ${lead.business_name}:`,
     '',
-    'Key Details:',
-    ...(parsed.key_details || []).map((d: string) => `- ${d}`),
+    transcript.slice(0, 4000),
+    truncated ? `\n(transcript truncated — see full recording in ${source})` : '',
     '',
-    'Next Steps:',
-    ...(parsed.next_steps || []).map((s: string) => `- ${s}`),
-    '',
-    `Budget Signal: ${parsed.budget_signal || 'Not discussed'}`,
-    `Timeline Signal: ${parsed.timeline_signal || 'Not discussed'}`,
-    '',
-    '(Auto-extracted from call transcript by the Social Practice Sales Engine)',
-  ].join('\n');
+    '(Auto-logged from call transcript by the Social Practice Sales Engine)',
+  ].filter(Boolean).join('\n');
 
   await createHubspotNote(hubspotKey, lead.hubspot_contact_id, lead.hubspot_deal_id, noteBody);
 }
@@ -112,30 +82,21 @@ Deno.serve(async (req) => {
   try {
     const supabaseAdmin = getSupabaseAdmin();
     const readaiCred = await getCredential(supabaseAdmin, 'readai');
-    const fathomCred = await getCredential(supabaseAdmin, 'fathom');
     const hubspotCred = await getCredential(supabaseAdmin, 'hubspot');
-    const anthropicCred = await getCredential(supabaseAdmin, 'anthropic');
+    const autoSend = await isAutoSendEnabled(supabaseAdmin);
 
-    if (!readaiCred && !fathomCred) {
-      throw new Error('Neither Read.ai nor Fathom is connected — add at least one in Settings.');
+    if (!readaiCred) {
+      throw new Error('Read.ai is not connected — add it in Settings.');
     }
 
     const sessions: NormalizedSession[] = [];
     const sourceErrors: string[] = [];
 
-    if (readaiCred) {
-      try { sessions.push(...(await fetchReadaiSessions(readaiCred.value))); }
-      catch (e) {
-        sourceErrors.push('Read.ai: ' + String(e));
-        await logAutomationFailure(supabaseAdmin, 'pull-transcripts', 'Read.ai fetch failed: ' + String(e));
-      }
-    }
-    if (fathomCred) {
-      try { sessions.push(...(await fetchFathomCalls(fathomCred.value))); }
-      catch (e) {
-        sourceErrors.push('Fathom: ' + String(e));
-        await logAutomationFailure(supabaseAdmin, 'pull-transcripts', 'Fathom fetch failed: ' + String(e));
-      }
+    try {
+      sessions.push(...(await fetchReadaiSessions(readaiCred.value)));
+    } catch (e) {
+      sourceErrors.push('Read.ai: ' + String(e));
+      await logAutomationFailure(supabaseAdmin, 'pull-transcripts', 'Read.ai fetch failed: ' + String(e));
     }
 
     let appended = 0;
@@ -181,9 +142,18 @@ Deno.serve(async (req) => {
       appended++;
 
       // Notetaker -> HubSpot: best-effort, never blocks the transcript append above.
-      if (hubspotCred && anthropicCred && lead.hubspot_contact_id) {
+      if (!autoSend) {
+        if (hubspotCred && lead.hubspot_contact_id) {
+          await logAutomationFailure(
+            supabaseAdmin,
+            'pull-transcripts',
+            'Auto-send is disabled in Settings — transcript was saved, but the HubSpot note was not pushed.',
+            lead.id
+          );
+        }
+      } else if (hubspotCred && lead.hubspot_contact_id) {
         try {
-          await pushNoteToHubspot(hubspotCred.value, anthropicCred.value, lead, session.transcript);
+          await pushNoteToHubspot(hubspotCred.value, lead, session.transcript, session.source);
           hubspotNotesPushed++;
         } catch (e) {
           hubspotErrors.push(`${lead.business_name}: ${String(e)}`);

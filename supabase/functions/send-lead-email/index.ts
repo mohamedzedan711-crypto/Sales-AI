@@ -1,14 +1,18 @@
 // Invoked directly from the app (anon key) when the user clicks "Send" on
-// an AI draft modal — Nurture, Recap, Follow-Up, Reactivate, or the
-// Follow-Up Tracker's own draft flow. Unlike send-booking-email, this
-// doesn't draft anything with Claude — it just sends whatever subject/body
-// it's given, since the drafting (and any user edits) already happened in
-// the textarea before Send was clicked.
+// the Nurture/Recap/Follow-Up/Reactivate/Book-Call draft modal. Doesn't draft
+// anything itself — the message is written manually in the textarea (no AI
+// drafting anywhere in this app anymore) before Send is clicked; this
+// function just sends whatever subject/body it's given.
+//
+// AUTO-SEND KILL SWITCH: checked first — if off, nothing is sent and
+// last_contact is not touched.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { sendGmail, textToHtmlBody } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
+import { isAutoSendEnabled } from '../_shared/autoSend.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -17,6 +21,13 @@ Deno.serve(async (req) => {
     if (!leadId || !subject || !body) throw new Error('leadId, subject, and body are required');
 
     const supabaseAdmin = getSupabaseAdmin();
+
+    if (!(await isAutoSendEnabled(supabaseAdmin))) {
+      await logAutomationFailure(supabaseAdmin, 'send-lead-email', 'Auto-send is disabled in Settings — this email was not sent.', leadId);
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'auto-send disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: lead } = await supabaseAdmin.from('leads').select('*').eq('id', leadId).maybeSingle();
     if (!lead) throw new Error('Lead not found');

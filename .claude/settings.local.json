@@ -5,7 +5,13 @@
       "Bash(node --check __TRACKED_VAR__/extracted.js)",
       "Bash(echo \"exit code: $?\")",
       "Bash(export SCRATCH=\"/c/Users/moham/AppData/Local/Temp/claude/C--Users-moham-Downloads-Sales-AI/f452bfb6-ae4a-42c7-9414-e62b712c112c/scratchpad\")",
-      "Bash(cd \"/c/Users/moham/Downloads/Sales AI\")"
+      "Bash(cd \"/c/Users/moham/Downloads/Sales AI\")",
+      "Bash(awk 'NR==948,NR==1050{next} {print}' index.html)",
+      "Read(//tmp/**)",
+      "Bash(cd \"C:\\\\Users\\\\moham\\\\Downloads\\\\Social_Practice\\\\Sales AI\" && cp /tmp/index_new2.html index.html && echo done)",
+      "Bash(awk 'NR==2478,NR==2862{next} {print}' index.html)",
+      "Bash(awk 'NR==1339,NR==1586{next} {print}' index.html)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

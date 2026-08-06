@@ -9,11 +9,8 @@
 // disconnect-credential, gmail-oauth-start) behind a shared password.
 
 const ENV_FALLBACK_VARS: Record<string, string> = {
-  anthropic: 'ANTHROPIC_API_KEY',
   hubspot: 'HUBSPOT_API_KEY',
   readai: 'READAI_API_KEY',
-  fathom: 'FATHOM_API_KEY',
-  monday: 'MONDAY_API_KEY',
 };
 
 export async function getCredential(

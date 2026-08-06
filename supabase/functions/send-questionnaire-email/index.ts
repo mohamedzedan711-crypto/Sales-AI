@@ -17,7 +17,7 @@
 //
 // IDEMPOTENCY: confirmed in production that the webhook trigger's HTTP call
 // was timing out (5s timeout, function regularly took longer — Gmail token
-// refresh + Claude draft + Gmail send + DB write), and each timeout caused
+// refresh + drafting the email body + Gmail send + DB write), and each timeout caused
 // Supabase to redeliver the SAME original INSERT event, sometimes several
 // at once. The old guard checked `payload.record.questionnaire_sent_at` —
 // but that's a snapshot frozen at the moment of the original INSERT, so
@@ -28,12 +28,21 @@
 // claimed it, this affects zero rows and we bail immediately. A plain
 // re-SELECT-then-check-then-later-write has a race window a same-instant
 // retry can slip through; the conditional UPDATE doesn't.
+//
+// The email body is a static template (no LLM call) as of the deterministic-
+// automation redesign — see sync-hubspot-leads for the identical template
+// used on the HubSpot-sync path.
+//
+// AUTO-SEND KILL SWITCH: checked first, before the atomic claim below — if
+// auto-send is off, this function returns without claiming the row, so the
+// lead stays eligible to be emailed once auto-send is turned back on (there
+// is no automatic retry; a human can resend manually via send-lead-email,
+// or the row just waits).
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { callClaude } from '../_shared/claude.ts';
-import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
 import { sendGmail, bodyWithLink, LINK_MARKER } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
+import { isAutoSendEnabled } from '../_shared/autoSend.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
 
@@ -45,6 +54,18 @@ Deno.serve(async (req) => {
     if (!leadFromPayload) throw new Error('No record in webhook payload');
 
     const supabaseAdmin = getSupabaseAdmin();
+
+    if (!(await isAutoSendEnabled(supabaseAdmin))) {
+      await logAutomationFailure(
+        supabaseAdmin,
+        'send-questionnaire-email',
+        'Auto-send is disabled in Settings — questionnaire email was not sent.',
+        leadFromPayload.id
+      );
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'auto-send disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Atomic claim: only succeeds (returns a row) if questionnaire_sent_at
     // is still null right now, in the live table — not in the payload
@@ -70,7 +91,6 @@ Deno.serve(async (req) => {
 
     if (!lead.email) throw new Error(`Lead ${lead.id} has no email on file — cannot send questionnaire (already marked as attempted; will need manual follow-up)`);
 
-    const anthropicCred = await requireCredential(supabaseAdmin, 'anthropic', 'Claude (Anthropic)');
     const gmailCred = await requireCredential(supabaseAdmin, 'gmail', 'Gmail');
     if (!gmailCred.meta?.email) throw new Error('Gmail is connected but has no account email on file — reconnect in Settings (already marked as attempted; will need manual follow-up).');
 
@@ -78,19 +98,15 @@ Deno.serve(async (req) => {
     const baseUrl = (Deno.env.get('QUESTIONNAIRE_BASE_URL') || '').replace(/\/$/, '');
     const link = `${baseUrl}/questionnaire.html?lead=${lead.id}&token=${token}`;
 
-    const voiceBlock = await getVoiceProfileBlock(supabaseAdmin);
-    const draft = await callClaude(
-      anthropicCred.value,
-      buildSystemPrompt(
-        `Task: Draft a short, warm email to a brand-new lead. These questions help us understand them and their business better — what they need, what they're working with, and how we can actually help. Ask them to answer a few quick questions. Do NOT write out a URL — instead, weave the clickable phrase naturally into a sentence using this exact marker: ${LINK_MARKER} (for example: "Please ${LINK_MARKER} to fill out the form."). The marker will be automatically turned into a real link before sending. Keep it brief and not corporate-sounding. Write ONLY the email — first line "Subject: ..." then the body.`,
-        voiceBlock
-      ),
-      `New lead: ${lead.contact_name || 'there'} from ${lead.business_name || 'their practice'}.`
-    );
+    const subject = 'A few quick questions before we chat';
+    const body = `Hi ${lead.contact_name || 'there'},
 
-    const subjectMatch = draft.match(/^Subject:\s*(.+)$/mi);
-    const subject = subjectMatch ? subjectMatch[1].trim() : 'A few quick questions before we chat';
-    const body = draft.replace(/^Subject:.*$/mi, '').trim();
+Thanks for reaching out! Before our call, it'd help to know a bit more about your practice and what you're looking for.
+
+Could you ${LINK_MARKER} answer a few quick questions? It only takes about 3 minutes.
+
+Talk soon,
+Social Practice`;
 
     await sendGmail(gmailCred.value, gmailCred.meta.email, lead.email, subject, bodyWithLink(body, link));
 

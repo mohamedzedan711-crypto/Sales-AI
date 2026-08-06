@@ -7,6 +7,5 @@ node_modules/
 # Supabase CLI local link/version cache — machine-specific, not source
 supabase/.temp/
 
-# Never commit this specific file, or similarly-named API key exports
-Claude API Key.txt
+# Never commit API key export files
 *API*Key*.txt

@@ -1,15 +1,21 @@
 // Invoked directly from the app when Mary clicks "Confirm & Send" in the
 // Book Meeting modal — the one manual step in the whole funnel. Everything
-// downstream of the click (drafting + sending the proposed-time email) is
-// automatic.
+// downstream of the click (sending the proposed-time email) is automatic.
+// The email body itself is a static template, and the meeting-prep brief
+// generated right after is a templated document built from data already in
+// the system — no LLM call anywhere in this function.
+//
+// AUTO-SEND KILL SWITCH: checked first — if off, nothing in this function
+// runs (no email, no stage change, no meeting-prep brief), since none of
+// that should happen if the email supposedly confirming it never went out.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
-import { callClaude } from '../_shared/claude.ts';
-import { getVoiceProfileBlock, buildSystemPrompt } from '../_shared/voice.ts';
 import { sendGmail, textToHtmlBody } from '../_shared/gmail.ts';
 import { requireCredential } from '../_shared/credentials.ts';
 import { generateMeetingPrepBrief } from '../_shared/meetingPrep.ts';
+import { isAutoSendEnabled } from '../_shared/autoSend.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { logAutomationFailure } from '../_shared/automationLog.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -18,7 +24,14 @@ Deno.serve(async (req) => {
     if (!leadId || !proposedDateTime) throw new Error('leadId and proposedDateTime are required');
 
     const supabaseAdmin = getSupabaseAdmin();
-    const anthropicCred = await requireCredential(supabaseAdmin, 'anthropic', 'Claude (Anthropic)');
+
+    if (!(await isAutoSendEnabled(supabaseAdmin))) {
+      await logAutomationFailure(supabaseAdmin, 'send-booking-email', 'Auto-send is disabled in Settings — booking confirmation email was not sent.', leadId);
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'auto-send disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const gmailCred = await requireCredential(supabaseAdmin, 'gmail', 'Gmail');
     if (!gmailCred.meta?.email) throw new Error('Gmail is connected but has no account email on file — reconnect in Settings.');
 
@@ -26,19 +39,15 @@ Deno.serve(async (req) => {
     if (!lead) throw new Error('Lead not found');
     if (!lead.email) throw new Error('Lead has no email on file');
 
-    const voiceBlock = await getVoiceProfileBlock(supabaseAdmin);
-    const draft = await callClaude(
-      anthropicCred.value,
-      buildSystemPrompt(
-        `Task: Propose a meeting time to a qualified lead who is ready for their strategy call. Proposed time: ${proposedDateTime}. Ask them to confirm this time or reply with a preferred alternative if it doesn't work. Write ONLY the email — first line "Subject: ..." then the body.`,
-        voiceBlock
-      ),
-      `Lead: ${lead.contact_name} from ${lead.business_name}. Qualification reason on file: ${lead.qualification_reason || 'n/a'}.`
-    );
+    const subject = "Let's find time to talk";
+    const body = `Hi ${lead.contact_name || 'there'},
 
-    const subjectMatch = draft.match(/^Subject:\s*(.+)$/mi);
-    const subject = subjectMatch ? subjectMatch[1].trim() : "Let's find time to talk";
-    const body = draft.replace(/^Subject:.*$/mi, '').trim();
+Thanks for your interest! I'd like to propose ${proposedDateTime} for our call.
+
+If that works for you, just reply to confirm. If not, let me know a time that works better and we'll get it locked in.
+
+Talk soon,
+Social Practice`;
 
     await sendGmail(gmailCred.value, gmailCred.meta.email, lead.email, subject, textToHtmlBody(body));
 
@@ -54,7 +63,7 @@ Deno.serve(async (req) => {
     // Meeting-prep brief: best-effort, doesn't block the booking email itself if it fails.
     let brief: string | null = null;
     try {
-      brief = await generateMeetingPrepBrief(supabaseAdmin, anthropicCred.value, leadId);
+      brief = await generateMeetingPrepBrief(supabaseAdmin, leadId);
     } catch (e) {
       console.warn('Meeting-prep brief generation failed:', String(e));
     }
