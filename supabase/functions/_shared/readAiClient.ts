@@ -43,14 +43,17 @@ async function refreshAccessToken(supabaseAdmin: any, row: ReadAiTokenRow): Prom
     );
   }
 
+  const basicAuth = btoa(`${clientId}:${clientSecret}`);
+
   const res = await fetch(tokenUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${basicAuth}`,
+    },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: row.refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
     }),
   });
   const data = await res.json();
