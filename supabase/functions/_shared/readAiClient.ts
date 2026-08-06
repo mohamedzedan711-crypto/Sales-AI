@@ -128,3 +128,45 @@ export async function getMeetingSummary(meetingId: string): Promise<any> {
   }
   return res.json();
 }
+
+// Lists meetings that started at or after sinceMs, oldest filter applied
+// server-side via start_time_ms.gte. Follows Read.ai's cursor pagination
+// (cursor = the id of the last item in the previous page) until has_more
+// is false, accumulating every page into one array. Returns the raw,
+// unfiltered data — callers (e.g. pull-meeting-summaries) decide what to
+// do with ended vs. still-active meetings, matched vs. unmatched leads,
+// etc.
+export async function listRecentMeetings(sinceMs: number): Promise<any[]> {
+  const apiBase = Deno.env.get('READ_AI_API_BASE_URL');
+  if (!apiBase) {
+    throw new Error('READ_AI_API_BASE_URL is not set — see .env.example.');
+  }
+
+  const accessToken = await getValidAccessToken();
+  const results: any[] = [];
+  let cursor: string | null = null;
+
+  while (true) {
+    const params = new URLSearchParams({
+      limit: '10',
+      'start_time_ms.gte': String(sinceMs),
+    });
+    if (cursor) params.set('cursor', cursor);
+
+    const res = await fetch(`${apiBase}/v1/meetings?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      throw new Error(`Read.ai listRecentMeetings failed (${res.status}): ${await res.text()}`);
+    }
+    const page = await res.json();
+    const items: any[] = page.data || [];
+    results.push(...items);
+
+    const lastId = items.length ? items[items.length - 1]?.id : null;
+    if (!page.has_more || !lastId) break;
+    cursor = lastId;
+  }
+
+  return results;
+}
