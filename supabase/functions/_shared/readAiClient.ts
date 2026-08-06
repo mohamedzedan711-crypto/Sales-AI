@@ -116,7 +116,7 @@ export async function getMeetingSummary(meetingId: string): Promise<any> {
   // TODO: REPLACE — not a real Read.ai endpoint. Confirm the actual path
   // against Read.ai's API docs (or a sample response from a live account)
   // before removing this TODO.
-  const endpoint = `${apiBase}/TODO_REPLACE_WITH_REAL_MEETING_SUMMARY_PATH/${encodeURIComponent(meetingId)}`;
+  const endpoint = `${apiBase}/v1/meetings/${encodeURIComponent(meetingId)}?expand[]=summary&expand[]=action_items`;
 
   const res = await fetch(endpoint, {
     headers: { Authorization: `Bearer ${accessToken}` },
