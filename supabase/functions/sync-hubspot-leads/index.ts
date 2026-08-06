@@ -22,11 +22,17 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const supabaseAdmin = getSupabaseAdmin();
+    console.log('CHECKPOINT: before requireCredential hubspot');
     const hubspotCred = await requireCredential(supabaseAdmin, 'hubspot', 'HubSpot');
+    console.log('CHECKPOINT: after requireCredential hubspot');
+    console.log('CHECKPOINT: before requireCredential gmail');
     const gmailCred = await requireCredential(supabaseAdmin, 'gmail', 'Gmail');
+    console.log('CHECKPOINT: after requireCredential gmail');
     if (!gmailCred.meta?.email) throw new Error('Gmail is connected but has no account email on file — reconnect in Settings.');
 
+    console.log('CHECKPOINT: before isAutoSendEnabled');
     const autoSend = await isAutoSendEnabled(supabaseAdmin);
+    console.log('CHECKPOINT: after isAutoSendEnabled');
     if (!autoSend) {
       await logAutomationFailure(
         supabaseAdmin,
@@ -35,11 +41,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log('CHECKPOINT: before getHubspotContacts');
     const contacts = await getHubspotContacts(hubspotCred.value);
+    console.log('CHECKPOINT: after getHubspotContacts');
 
+    console.log('CHECKPOINT: before leads select');
     const { data: existingLeads } = await supabaseAdmin
       .from('leads')
       .select('id, email, hubspot_contact_id, contact_name, business_name');
+    console.log('CHECKPOINT: after leads select');
     const existing = existingLeads || [];
 
     const baseUrl = (Deno.env.get('QUESTIONNAIRE_BASE_URL') || '').replace(/\/$/, '');
@@ -95,6 +105,7 @@ Deno.serve(async (req) => {
         );
       }
 
+      console.log(`CHECKPOINT: before insert (${email})`);
       const { data: inserted, error: insertError } = await supabaseAdmin
         .from('leads')
         .insert([{
@@ -116,6 +127,7 @@ Deno.serve(async (req) => {
         }])
         .select()
         .single();
+      console.log(`CHECKPOINT: after insert (${email})`);
 
       if (insertError || !inserted) {
         errors.push(`insert failed for ${email}: ${insertError?.message}`);
@@ -138,7 +150,9 @@ Could you ${LINK_MARKER} answer a few quick questions? It only takes about 3 min
 Talk soon,
 Social Practice`;
 
+        console.log(`CHECKPOINT: before sendGmail (${email})`);
         await sendGmail(gmailCred.value, gmailCred.meta.email, props.email, subject, bodyWithLink(body, link));
+        console.log(`CHECKPOINT: after sendGmail (${email})`);
       } catch (mailErr) {
         errors.push(`email failed for ${email}: ${String(mailErr)}`);
         await logAutomationFailure(
