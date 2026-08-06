@@ -34,7 +34,9 @@ HubSpot and Read.ai accounts/keys are **not** needed at deploy time — add them
 
 ## 1. Apply the schema
 
-In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`. All nine are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9).
+In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`, then `supabase_schema_v10.sql`. All ten are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9).
+
+`supabase_schema_v10.sql` is a **scaffold, not a working integration** — it adds `read_ai_tokens` (token storage for a planned Read.ai OAuth 2.1 connection) and a nullable `code_verifier` column on `oauth_states` (for that flow's PKCE requirement). Read.ai OAuth client_id/client_secret don't exist yet — `read-ai-authorize` and `read-ai-oauth-callback` (deployed in step 4) will throw a clear "not configured" error until `READ_AI_CLIENT_ID`/`READ_AI_CLIENT_SECRET`/`READ_AI_AUTH_URL`/`READ_AI_TOKEN_URL`/`READ_AI_REDIRECT_URI` are set as real Supabase secrets (see `.env.example`). This is entirely separate from the existing Read.ai integration (the plain API key in Settings → Integrations, used by `pull-transcripts`) — that one is untouched.
 
 `supabase_schema_v8.sql` adds `system_settings` — a single row holding the global auto-send kill switch (`auto_send_enabled`, defaults to `false`). Every function that sends or triggers an automatic send (`send-questionnaire-email`, `sync-hubspot-leads`, `send-booking-email`, `send-lead-email`, and `pull-transcripts`' HubSpot note push) checks this first and skips (logging to `automation_failures`) instead of sending while it's off.
 
@@ -79,6 +81,8 @@ supabase secrets set QUESTIONNAIRE_BASE_URL=https://yourdomain.com
 - `ADMIN_PANEL_PASSWORD` gates every write to `api_credentials` (saving/testing a key, disconnecting one, starting the Gmail OAuth flow) *and* the auto-send kill switch (`set-auto-send`). There's no login system in this app otherwise — whoever knows this password can manage integrations and turn automatic sending on or off from Settings. Treat it like any other secret; don't share it outside the team that manages this deployment.
 - `QUESTIONNAIRE_BASE_URL` is wherever `index.html`/`questionnaire.html` are actually reachable (no trailing slash) — used to build the questionnaire link in emails, and to redirect the browser back after the Gmail OAuth flow completes.
 
+**Not yet a real secret to set** — the Read.ai OAuth 2.1 scaffold (`read-ai-authorize` / `read-ai-oauth-callback` / `_shared/readAiClient.ts`) needs `READ_AI_CLIENT_ID`, `READ_AI_CLIENT_SECRET`, `READ_AI_AUTH_URL`, `READ_AI_TOKEN_URL`, `READ_AI_REDIRECT_URI`, and `READ_AI_API_BASE_URL` (see `.env.example`), but none of those exist yet since there's no registered Read.ai OAuth app. Nothing in this scaffold runs until they're set.
+
 ### Register the Gmail OAuth redirect URI
 
 In Google Cloud Console, under the OAuth client's **Authorized redirect URIs**, add exactly:
@@ -88,6 +92,14 @@ https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/gmail-oauth-callback
 ```
 
 This has to match byte-for-byte or Google will reject the callback.
+
+### Read.ai OAuth redirect URI (once a Read.ai OAuth app exists)
+
+Not usable yet — there's no Read.ai OAuth app to register this with. For when one exists, the redirect URI this scaffold's callback expects (and what `READ_AI_REDIRECT_URI` should be set to) is:
+
+```
+https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/read-ai-oauth-callback
+```
 
 ## 4. Deploy the functions
 
@@ -107,6 +119,8 @@ supabase functions deploy check-integration-status
 supabase functions deploy send-questionnaire-email
 supabase functions deploy send-lead-email
 supabase functions deploy set-auto-send
+supabase functions deploy read-ai-authorize
+supabase functions deploy read-ai-oauth-callback
 ```
 
 ### Optional: skip pasting keys into Settings entirely
@@ -204,6 +218,7 @@ Note: the existing Settings field for HubSpot elsewhere on the page (under CRM) 
 ## Known gaps to confirm once you have real API access
 
 - **Read.ai**: `pull-transcripts`'s endpoint (`api.read.ai/v1/sessions`) and field names (`session.attendees`, `session.transcript`, etc.) are a best-effort guess at a reasonable REST shape — adjust once you can see Read.ai's actual API docs or a sample response. The same guessed endpoint is used for the Read.ai key test in `save-credential`.
+- **Read.ai OAuth 2.1 scaffold** (`read-ai-authorize`, `read-ai-oauth-callback`, `_shared/readAiClient.ts`, `read_ai_tokens` table): structure only, not a working integration. No Read.ai OAuth app is registered yet, so `READ_AI_CLIENT_ID`/`READ_AI_CLIENT_SECRET`/`READ_AI_AUTH_URL`/`READ_AI_TOKEN_URL`/`READ_AI_REDIRECT_URI` are unset — both functions throw a clear "not configured" error until they're set. Requested OAuth scopes in `read-ai-authorize` and the endpoint path in `readAiClient.ts`'s `getMeetingSummary()` are explicitly marked `TODO` placeholders, not guesses presented as real — confirm both against Read.ai's actual docs once available. This is entirely separate from the API-key-based Read.ai integration `pull-transcripts` already uses; that one is untouched.
 - **HubSpot note-to-deal association**: `createHubspotNote` (in `_shared/hubspot.ts`) uses `associationTypeId: 214` for note-to-deal, which is HubSpot's documented default but not independently verified against a live account. The note-to-contact association (`202`) came from HubSpot's docs via earlier work in this app and is trusted. If deal association silently doesn't show up in HubSpot, the note itself still lands on the contact — that part degrades gracefully.
 - **Proposal deck automation (4 custom pages)**: intentionally not built. Proposal Builder itself (generic AI proposal generation) was removed from the frontend entirely as part of the no-LLM redesign.
 
