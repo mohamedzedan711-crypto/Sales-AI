@@ -54,3 +54,122 @@ export async function createHubspotNote(
     }
   }
 }
+
+// Fetches a single Contact/Company by id — used by hubspot-webhook-receiver
+// to pull the full record after a webhook only tells us an objectId changed.
+export async function getHubspotContactById(key: string, contactId: string): Promise<any> {
+  const res = await fetch(
+    `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=email,firstname,lastname,company,phone,hs_lead_status,hs_analytics_source,createdate,lastmodifieddate`,
+    { headers: { Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) throw new Error('HubSpot getHubspotContactById returned ' + res.status);
+  return res.json();
+}
+
+export async function getHubspotCompanyById(key: string, companyId: string): Promise<any> {
+  const res = await fetch(
+    `https://api.hubapi.com/crm/v3/objects/companies/${companyId}?properties=name,domain,city,state,industry,createdate,hs_lastmodifieddate`,
+    { headers: { Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) throw new Error('HubSpot getHubspotCompanyById returned ' + res.status);
+  return res.json();
+}
+
+// Returns the first associated company id for a contact, or null if none.
+// HubSpot's default association allows more than one, but this app treats
+// a lead as having a single practice — first result is what we use.
+export async function getAssociatedCompanyId(key: string, contactId: string): Promise<string | null> {
+  const res = await fetch(
+    `https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/companies`,
+    { headers: { Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) throw new Error('HubSpot getAssociatedCompanyId returned ' + res.status);
+  const data = await res.json();
+  return data.results?.[0]?.toObjectId != null ? String(data.results[0].toObjectId) : null;
+}
+
+// Returns every contact id associated with a company (a company changing
+// can affect multiple contacts/leads).
+export async function getAssociatedContactIds(key: string, companyId: string): Promise<string[]> {
+  const res = await fetch(
+    `https://api.hubapi.com/crm/v4/objects/companies/${companyId}/associations/contacts`,
+    { headers: { Authorization: `Bearer ${key}` } }
+  );
+  if (!res.ok) throw new Error('HubSpot getAssociatedContactIds returned ' + res.status);
+  const data = await res.json();
+  return (data.results || []).map((r: any) => String(r.toObjectId));
+}
+
+// CONTAINS_TOKEN search against Company `name` — HubSpot tokenizes both
+// the stored property value and the search value and matches on token
+// overlap, so passing the whole extracted name string as `value` is the
+// normal way to use this operator (no need to loop token-by-token
+// ourselves). Used by prospero-webhook-receiver's fuzzy company matching
+// — there is no prior implementation of this in the codebase to reuse;
+// this is a new, from-scratch use of a real, documented HubSpot Search
+// API operator.
+export async function searchHubspotCompaniesByName(key: string, nameQuery: string, limit = 5): Promise<any[]> {
+  const res = await fetch('https://api.hubapi.com/crm/v3/objects/companies/search', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filterGroups: [{ filters: [{ propertyName: 'name', operator: 'CONTAINS_TOKEN', value: nameQuery }] }],
+      properties: ['name', 'domain'],
+      limit,
+    }),
+  });
+  if (!res.ok) throw new Error('HubSpot searchHubspotCompaniesByName returned ' + res.status);
+  const data = await res.json();
+  return data.results || [];
+}
+
+// Creates a new Deal, or updates one if hubspotDealId is provided (pass
+// the id already stored on our own deals.hubspot_deal_id). Association
+// type IDs below (deal-to-contact: 3, deal-to-company: 5) are HubSpot's
+// documented defaults — same caveat already on createHubspotNote's
+// note-to-deal association above: not independently re-verified against
+// a live account in this pass. Wrapped so a wrong association id can't
+// break the deal write itself, which is the reliable part.
+export async function upsertHubspotDeal(
+  key: string,
+  hubspotDealId: string | null,
+  properties: Record<string, string | number>,
+  associations: { contactId?: string | null; companyId?: string | null }
+): Promise<string> {
+  const url = hubspotDealId
+    ? `https://api.hubapi.com/crm/v3/objects/deals/${hubspotDealId}`
+    : 'https://api.hubapi.com/crm/v3/objects/deals';
+  const res = await fetch(url, {
+    method: hubspotDealId ? 'PATCH' : 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties }),
+  });
+  if (!res.ok) throw new Error('HubSpot upsertHubspotDeal failed: ' + (await res.text()));
+  const saved = await res.json();
+  const dealId = saved.id;
+
+  if (associations.contactId) {
+    try {
+      await fetch(`https://api.hubapi.com/crm/v4/objects/deals/${dealId}/associations/contacts/${associations.contactId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }]),
+      });
+    } catch {
+      // Best-effort only — the deal itself already saved, which is what matters.
+    }
+  }
+  if (associations.companyId) {
+    try {
+      await fetch(`https://api.hubapi.com/crm/v4/objects/deals/${dealId}/associations/companies/${associations.companyId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 5 }]),
+      });
+    } catch {
+      // Best-effort only.
+    }
+  }
+
+  return dealId;
+}

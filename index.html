@@ -1600,6 +1600,147 @@ function qualificationBadgeHtml(l){
   }
   return `<span class="muted" style="font-size:12px;">—</span>`;
 }
+/* Human override layered on top of the deterministic qualifier — never
+   replaces qualified/qualification_score/qualification_reason above,
+   which stay exactly as qualify-lead last set them. Both are shown at
+   once. */
+const QUALIFICATION_OVERRIDE_LABELS = { qualified:'Qualified', not_yet:'Not Yet', needs_review:'Needs Review' };
+function qualificationOverrideBlockHtml(l){
+  const overrideBadge = l.qualification_override
+    ? `<span class="badge" style="background:var(--pink-light);color:var(--pink);" title="${escapeHtml(l.qualification_override_reason||'')}">Override: ${QUALIFICATION_OVERRIDE_LABELS[l.qualification_override]||l.qualification_override}</span>`
+    : '';
+  return `
+    <div style="margin:12px 0;padding:10px 12px;background:var(--bg-secondary);border-radius:8px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <strong style="font-size:12.5px;">Qualification (deterministic):</strong> ${qualificationBadgeHtml(l)} ${overrideBadge}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm ${l.qualification_override==='qualified'?'btn-pink':''}" onclick="event.stopPropagation();openQualificationOverrideModal('${l.id}','qualified')">Qualified</button>
+        <button class="btn btn-sm ${l.qualification_override==='not_yet'?'btn-pink':''}" onclick="event.stopPropagation();openQualificationOverrideModal('${l.id}','not_yet')">Not Yet</button>
+        <button class="btn btn-sm ${l.qualification_override==='needs_review'?'btn-pink':''}" onclick="event.stopPropagation();openQualificationOverrideModal('${l.id}','needs_review')">Needs Review</button>
+        ${l.qualification_override ? `<button class="btn btn-sm" onclick="event.stopPropagation();clearQualificationOverride('${l.id}')">Clear Override</button>` : ''}
+      </div>
+    </div>`;
+}
+function openQualificationOverrideModal(leadId, value){
+  const label = QUALIFICATION_OVERRIDE_LABELS[value] || value;
+  openModal(`Override Qualification — ${label}`, `
+    <p class="muted" style="margin-bottom:12px;">This is a human decision layered on top of the deterministic result — the original score and reason stay on file and visible; nothing is recalculated or replaced.</p>
+    <div class="form-row"><label>Reason (optional)</label><textarea id="overrideReason" rows="3" placeholder="Why override the deterministic result?"></textarea></div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="confirmQualificationOverride('${leadId}','${value}')">Confirm</button>
+  `);
+}
+async function confirmQualificationOverride(leadId, value){
+  const reason = (document.getElementById('overrideReason')?.value || '').trim();
+  closeModal();
+  if(!supabaseClient){ toast('Connect Supabase in Settings first.','error'); return; }
+  const { error } = await supabaseClient.from('leads').update({
+    qualification_override: value,
+    qualification_override_reason: reason || null,
+    qualification_override_by: 'Mary',
+    qualification_override_at: new Date().toISOString(),
+  }).eq('id', leadId);
+  if(error){ toast('Could not save override: '+error.message,'error'); return; }
+  toast('Qualification override saved.','success');
+  await refreshPipeline();
+  // Product decision: every manual override writes back to HubSpot
+  // immediately. Pushed as a timeline note (HUBSPOT.logCall, despite the
+  // name, posts a generic Note) rather than a structured property update,
+  // so it can't accidentally trip a property-driven HubSpot Workflow.
+  const lead = findLeadById(leadId);
+  if(HUBSPOT.isReady() && lead && lead.hubspot_contact_id){
+    try{ await HUBSPOT.logCall(lead.hubspot_contact_id, `Qualification override: ${QUALIFICATION_OVERRIDE_LABELS[value]||value}${reason?' — '+reason:''}`); }
+    catch(e){ console.warn('HubSpot override log failed:', e); }
+  }
+}
+async function clearQualificationOverride(leadId){
+  if(!supabaseClient){ toast('Connect Supabase in Settings first.','error'); return; }
+  const { error } = await supabaseClient.from('leads').update({
+    qualification_override: null, qualification_override_reason: null, qualification_override_by: null, qualification_override_at: null,
+  }).eq('id', leadId);
+  if(error){ toast('Could not clear override: '+error.message,'error'); return; }
+  toast('Override cleared.','success');
+  await refreshPipeline();
+}
+/* ===================== TEMPLATES (manual send) ===================== */
+const TEMPLATE_CATEGORY_LABELS = { qualification:'Qualification', lead_gen:'Lead Generation', follow_up:'Follow-Up', booking:'Booking' };
+// Same merge-field set send-template (server-side) fills in — kept in
+// sync manually since there's no shared JS module between the browser
+// and the Edge Functions in this codebase's architecture.
+function fillMergeFieldsClient(template, lead){
+  const contactName = (lead.contact_name||'').trim();
+  const parts = contactName.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ');
+  const values = {
+    first_name: firstName,
+    last_name: lastName,
+    contact_name: contactName,
+    practice_name: lead.business_name || '',
+    business_name: lead.business_name || '',
+    email: lead.email || '',
+  };
+  return String(template||'').replace(/\{\{\s*([a-zA-Z_]+)\s*\}\}/g, (m,k)=> k in values ? values[k] : m);
+}
+async function openTemplatesModal(leadId){
+  if(!supabaseClient){ toast('Connect Supabase in Settings to use Templates.','error'); return; }
+  const { data: templates, error } = await supabaseClient.from('templates').select('*').eq('active', true).order('category').order('sort_order');
+  if(error){ toast('Could not load templates: '+error.message,'error'); return; }
+  const groups = {};
+  (templates||[]).forEach(t=>{ (groups[t.category] = groups[t.category]||[]).push(t); });
+  const catKeys = Object.keys(groups);
+  const html = catKeys.length
+    ? catKeys.map(cat=>`
+        <div class="section-label">${escapeHtml(TEMPLATE_CATEGORY_LABELS[cat] || cat)}</div>
+        <div style="margin-bottom:14px;">
+          ${groups[cat].map(t=>`<div class="list-item list-item-clickable" onclick="closeModal();previewTemplate('${leadId}','${t.id}')"><div><div class="list-item-title">${escapeHtml(t.name)}</div></div></div>`).join('')}
+        </div>`).join('')
+    : '<p class="muted">No templates yet.</p>';
+  openModal('Templates', html, `<button class="btn" onclick="closeModal()">Close</button>`);
+}
+async function previewTemplate(leadId, templateId){
+  const { data: template, error } = await supabaseClient.from('templates').select('*').eq('id', templateId).maybeSingle();
+  if(error || !template){ toast('Could not load template.','error'); return; }
+  const lead = findLeadById(leadId) || (await LeadsDB.getAll()).find(l=>l.id===leadId);
+  if(!lead){ toast('Lead not found.','error'); return; }
+  const subject = fillMergeFieldsClient(template.subject, lead);
+  const body = fillMergeFieldsClient(template.body, lead);
+  openModal(`Preview — ${template.name}`, `
+    <p class="muted" style="margin-bottom:12px;">Merge fields are already filled in with this lead's data. Review or edit before sending — nothing sends until you click Send.</p>
+    <div class="form-row"><label>Subject</label><input type="text" id="templatePreviewSubject" value="${escapeHtml(subject)}"></div>
+    <div class="form-row"><label>Body</label><textarea id="templatePreviewBody" rows="12">${escapeHtml(body)}</textarea></div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" id="templateSendBtn" onclick="confirmSendTemplate('${leadId}','${templateId}')">Send</button>
+  `);
+}
+async function confirmSendTemplate(leadId, templateId){
+  const subject = document.getElementById('templatePreviewSubject').value;
+  const body = document.getElementById('templatePreviewBody').value;
+  if(!body.trim()){ toast('Nothing to send.','error'); return; }
+  const btn = document.getElementById('templateSendBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-template`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ lead_id:leadId, template_id:templateId, subject_override:subject, body_override:body })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    toast('Template sent.','success');
+    closeModal();
+    await refreshPipeline();
+  }catch(e){
+    toast('Could not send: '+e.message,'error');
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
 function toggleLeadExpand(id){
   expandedLeadId = (expandedLeadId === id) ? null : id;
   renderLeadsTable();
@@ -1631,7 +1772,9 @@ function leadRowHtml(l){
           <div><strong>Location:</strong> ${escapeHtml(l.location||'—')}</div>
           <div><strong>Last Contact:</strong> ${fmtDate(l.last_contact)}</div>
         </div>
+        ${qualificationOverrideBlockHtml(l)}
         <div class="actions-cell">
+          <button class="btn btn-sm btn-pink" onclick="openTemplatesModal('${l.id}')">📄 Templates</button>
           <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
           <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
           ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}

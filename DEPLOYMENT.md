@@ -34,7 +34,11 @@ HubSpot and Read.ai accounts/keys are **not** needed at deploy time — add them
 
 ## 1. Apply the schema
 
-In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`, then `supabase_schema_v10.sql`. All ten are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9).
+In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`, then `supabase_schema_v10.sql`, then `supabase_schema_v11.sql`, then `supabase_schema_v12.sql`. All are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9/v12).
+
+`supabase_schema_v11.sql` adds `hubspot_sync_state` — a singleton cursor row used by `sync-hubspot-contacts` (a second, independent HubSpot→leads sync path; see step 4).
+
+`supabase_schema_v12.sql` is the schema for the "Manual Send + Automated Detection" build: `companies` (new table, FK'd from `leads.company_id`), `deals` (FK'd to both `leads` and `companies`, tracks both a HubSpot deal id and a Prospero deal id), `prospero_events` (logs every raw Prospero webhook payload verbatim, before any parsing — see step 8), `templates` (the canned-message library Mary sends from; seeded with 16 placeholder rows across `qualification`/`lead_gen`/`follow_up`/`booking` — actual copy still needs to be filled in from the brand-voice guide, not done in this pass), and four `qualification_override*` columns on `leads` (a human override sitting *alongside* the deterministic qualification score/reason, never replacing them — both stay visible).
 
 `supabase_schema_v10.sql` is a **scaffold, not a working integration** — it adds `read_ai_tokens` (token storage for a planned Read.ai OAuth 2.1 connection) and a nullable `code_verifier` column on `oauth_states` (for that flow's PKCE requirement). Read.ai OAuth client_id/client_secret don't exist yet — `read-ai-authorize` and `read-ai-oauth-callback` (deployed in step 4) will throw a clear "not configured" error until `READ_AI_CLIENT_ID`/`READ_AI_CLIENT_SECRET`/`READ_AI_AUTH_URL`/`READ_AI_TOKEN_URL`/`READ_AI_REDIRECT_URI` are set as real Supabase secrets (see `.env.example`). This is entirely separate from the existing Read.ai integration (the plain API key in Settings → Integrations, used by `pull-transcripts`) — that one is untouched.
 
@@ -75,11 +79,13 @@ supabase secrets set GMAIL_CLIENT_ID=...
 supabase secrets set GMAIL_CLIENT_SECRET=...
 supabase secrets set ADMIN_PANEL_PASSWORD=choose-a-strong-password
 supabase secrets set QUESTIONNAIRE_BASE_URL=https://yourdomain.com
+supabase secrets set HUBSPOT_CLIENT_SECRET=...
 ```
 
 - `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` identify the OAuth *app* itself (must match what's registered in Google Cloud Console, redirect URI and all) — not a per-user credential, so it can't reasonably be entered through a form. This is the one exception to "everything's in the app now."
 - `ADMIN_PANEL_PASSWORD` gates every write to `api_credentials` (saving/testing a key, disconnecting one, starting the Gmail OAuth flow) *and* the auto-send kill switch (`set-auto-send`). There's no login system in this app otherwise — whoever knows this password can manage integrations and turn automatic sending on or off from Settings. Treat it like any other secret; don't share it outside the team that manages this deployment.
 - `QUESTIONNAIRE_BASE_URL` is wherever `index.html`/`questionnaire.html` are actually reachable (no trailing slash) — used to build the questionnaire link in emails, and to redirect the browser back after the Gmail OAuth flow completes.
+- `HUBSPOT_CLIENT_SECRET` is a **different credential from `HUBSPOT_API_KEY`** — it belongs to a HubSpot *App* (not a private-app API key) and is what `hubspot-webhook-receiver` uses to verify HubSpot's v3 webhook signature on every incoming request. It does not exist until you register that App (see step 8). Until this secret is set, `hubspot-webhook-receiver` rejects every request with a clear, logged "not configured" reason — it fails closed, not open.
 
 **Not yet a real secret to set** — the Read.ai OAuth 2.1 scaffold (`read-ai-authorize` / `read-ai-oauth-callback` / `_shared/readAiClient.ts`) needs `READ_AI_CLIENT_ID`, `READ_AI_CLIENT_SECRET`, `READ_AI_AUTH_URL`, `READ_AI_TOKEN_URL`, `READ_AI_REDIRECT_URI`, and `READ_AI_API_BASE_URL` (see `.env.example`), but none of those exist yet since there's no registered Read.ai OAuth app. Nothing in this scaffold runs until they're set.
 
@@ -121,7 +127,15 @@ supabase functions deploy send-lead-email
 supabase functions deploy set-auto-send
 supabase functions deploy read-ai-authorize
 supabase functions deploy read-ai-oauth-callback
+supabase functions deploy sync-hubspot-contacts
+supabase functions deploy hubspot-webhook-receiver
+supabase functions deploy prospero-webhook-receiver
+supabase functions deploy send-template
 ```
+
+`sync-hubspot-contacts` is a second, independent HubSpot→leads sync (incremental, cursor-based via `hubspot_sync_state`) — separate from `sync-hubspot-leads` above, which stays as-is. Not yet deployed as of this writing; review before deploying.
+
+`hubspot-webhook-receiver` and `prospero-webhook-receiver` are new — see step 8 for the exact webhook setup (this is the part that happens in each provider's own UI, not in code). `send-template` is called directly from the app (with the anon key) when Mary clicks Send after previewing a template in the new Templates picker on a lead's detail row — see step 9.
 
 ### Optional: skip pasting keys into Settings entirely
 
@@ -215,12 +229,67 @@ If `current_setting('app.settings.service_role_key')` isn't populated in your pr
 
 Note: the existing Settings field for HubSpot elsewhere on the page (under CRM) is separate from Integrations — it powers this app's own in-browser features (the manual HubSpot sync button, HubSpot logging from the draft modal, etc.) and is unrelated to the backend automation. You'll likely want the same key in both places, but they're independent by design.
 
+## 8. HubSpot & Prospero webhooks (detection layer)
+
+This is the "Manual Send + Automated Detection" build: HubSpot and Prospero stay fully automated on the *detection* side (their data flows into `leads`/`companies`/`deals` the instant something changes, no polling, no pg_cron — pg_cron is not available on this Supabase project anyway). The *outreach* side (actually emailing someone) stays manual — see step 9. Neither webhook receiver ever sends an email or triggers a HubSpot Workflow; they only detect and upsert.
+
+### 8a. HubSpot webhook subscriptions (done in HubSpot's UI, not in code)
+
+HubSpot's v3 webhook signature requires a HubSpot **App** with a Client Secret — this is different from the `HUBSPOT_API_KEY` private-app token already in use everywhere else in this codebase. If you don't already have a HubSpot App registered for this project:
+
+1. In HubSpot: **Settings → Integrations → Private Apps** won't work here — webhooks need a full **App** (Settings → Integrations → Apps, or developer.hubspot.com → "Create app"). Create one (or use an existing one) scoped to this account.
+2. Under that App's **Webhooks** tab, set the **Target URL** to:
+   ```
+   https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/hubspot-webhook-receiver
+   ```
+3. Add these four subscriptions:
+   - `contact.creation`
+   - `contact.propertyChange`
+   - `company.creation`
+   - `company.propertyChange`
+4. Copy the App's **Client Secret** (on the App's Auth tab) and set it as the `HUBSPOT_CLIENT_SECRET` Supabase secret (step 3 above) — this is what the receiver uses to verify `X-HubSpot-Signature-v3` on every request.
+5. Install/activate the App on the HubSpot account so the subscriptions actually start firing.
+
+This has **not been tested against a live HubSpot App** — the signature algorithm (`_shared/hubspotWebhookAuth.ts`) is implemented per HubSpot's documented v3 spec (`base64(HMAC-SHA256(method + URI + body + timestamp, clientSecret))`), but exact-URI matching is the most common real-world cause of signature mismatches, so confirm the first real delivery succeeds before relying on this.
+
+Existing HubSpot Workflows (including "Hire Us Form Submission Workflow") are untouched by any of this and keep running exactly as they do today — this receiver only reads HubSpot data into Sales-AI, it never writes anything that could trigger a HubSpot Workflow.
+
+### 8b. Prospero webhook
+
+Prospero has no API — it's webhook-only, so Sales-AI has to be the one giving Prospero a URL to call, not the other way around. In Prospero's settings, wherever it lets you configure an outgoing webhook/integration URL, set it to:
+
+```
+https://cskenvvssmblqpbvtrig.supabase.co/functions/v1/prospero-webhook-receiver
+```
+
+No signing secret or auth header is required on Prospero's side — every payload received is logged verbatim to `prospero_events` first, before any parsing is attempted, specifically because **the real shape of a Prospero payload has not been seen yet**. Field extraction (`extractDealFields` in `prospero-webhook-receiver/index.ts`) is a best-effort guess across several plausible key names and nesting levels — treat it as a starting point, not a finished mapping, and revisit it against `prospero_events.raw_payload` once real deliveries start arriving.
+
+Matching a Prospero event to a lead: exact email match first (no HubSpot call needed), then — if no email match and a company name was extracted — a `CONTAINS_TOKEN` fuzzy search against HubSpot's Company `name` property (built fresh for this pass; there was no prior "Monday migration" implementation of this anywhere in the codebase to reuse). If neither resolves to exactly one lead, the event is left unprocessed (logged, not guessed) rather than attached to the wrong record.
+
+Sales-AI is the middleware between the two systems: a matched Prospero event is upserted into Sales-AI's own `deals` table *and* pushed to HubSpot as a Deal — Prospero and HubSpot never talk to each other directly.
+
+## 9. Manual template sends (outreach layer)
+
+Every email — qualification, lead-gen, follow-up, booking — sends only when Mary clicks Send after previewing it, via the new "📄 Templates" button on a lead's detail row in Sales Pipeline. There is no automatic dispatch based on a lead's stage, score, or any webhook event; that's an explicitly out-of-scope future phase. `send-template` is not gated by the auto-send kill switch (step 1/7) — that switch exists to hold back *unattended* sends, and every call into `send-template` is already human-initiated by definition.
+
+**Hard dependency: Mary's Gmail must be connected under her own account (`mary@social-practicetx.com`), not Zane's personal Gmail.** `send-template` checks the connected account's email at send time and refuses (with a clear logged reason, no email sent) if it doesn't match. As of this build, Mary's Gmail has not yet been reconnected under her own account in Settings — it's currently deferred/using a different account. Reconnect it via Settings → Email → "Connect Gmail" before Templates can send anything; until then, every send attempt will fail this check by design, which is the intended stand-in for a stubbed TODO (a real runtime guard, not commented-out code, so it self-resolves the moment the reconnection happens).
+
+Every send writes to `comm_log` and — best-effort, non-blocking — pushes a note to the contact's HubSpot timeline (not a structured property, so it can't accidentally trip a property-based Workflow). Whether Mary's Gmail account also has HubSpot's native Gmail/Sales-extension sync active (which would log the email a second time on HubSpot's side) **could not be confirmed from this codebase** — that's a Google Workspace / HubSpot Sales Hub account setting, not something Sales-AI stores. Check Mary's HubSpot account settings directly once her Gmail is reconnected; if native sync is on, the timeline note here is intentionally redundant rather than harmful.
+
+Qualification overrides (the Qualified / Not Yet / Needs Review buttons next to the deterministic score) follow the same manual, write-back-immediately pattern: an override is a human decision layered on top of the deterministic score, never a replacement for it — both stay on file and visible — and saving one also pushes a HubSpot timeline note the same way.
+
 ## Known gaps to confirm once you have real API access
 
 - **Read.ai**: `pull-transcripts`'s endpoint (`api.read.ai/v1/sessions`) and field names (`session.attendees`, `session.transcript`, etc.) are a best-effort guess at a reasonable REST shape — adjust once you can see Read.ai's actual API docs or a sample response. The same guessed endpoint is used for the Read.ai key test in `save-credential`.
 - **Read.ai OAuth 2.1 scaffold** (`read-ai-authorize`, `read-ai-oauth-callback`, `_shared/readAiClient.ts`, `read_ai_tokens` table): structure only, not a working integration. No Read.ai OAuth app is registered yet, so `READ_AI_CLIENT_ID`/`READ_AI_CLIENT_SECRET`/`READ_AI_AUTH_URL`/`READ_AI_TOKEN_URL`/`READ_AI_REDIRECT_URI` are unset — both functions throw a clear "not configured" error until they're set. Requested OAuth scopes in `read-ai-authorize` and the endpoint path in `readAiClient.ts`'s `getMeetingSummary()` are explicitly marked `TODO` placeholders, not guesses presented as real — confirm both against Read.ai's actual docs once available. This is entirely separate from the API-key-based Read.ai integration `pull-transcripts` already uses; that one is untouched.
 - **HubSpot note-to-deal association**: `createHubspotNote` (in `_shared/hubspot.ts`) uses `associationTypeId: 214` for note-to-deal, which is HubSpot's documented default but not independently verified against a live account. The note-to-contact association (`202`) came from HubSpot's docs via earlier work in this app and is trusted. If deal association silently doesn't show up in HubSpot, the note itself still lands on the contact — that part degrades gracefully.
 - **Proposal deck automation (4 custom pages)**: intentionally not built. Proposal Builder itself (generic AI proposal generation) was removed from the frontend entirely as part of the no-LLM redesign.
+- **HubSpot v3 webhook signature**: implemented per HubSpot's documented spec but not yet exercised against a live HubSpot App/delivery — see step 8a.
+- **Prospero payload shape**: unknown until real deliveries arrive; `extractDealFields` in `prospero-webhook-receiver/index.ts` is a defensive best-effort guess, not a confirmed mapping — see step 8b. Nothing crashes on an unexpected shape; the raw payload is always preserved in `prospero_events` regardless.
+- **HubSpot Deal associations** (`upsertHubspotDeal` in `_shared/hubspot.ts`): uses the same unverified-but-documented-default association type IDs as the existing note-to-deal association (see the entry above); wrapped so an association failure never blocks the underlying Deal write.
+- **Mary's Gmail → HubSpot reconnection**: not done as of this build — `send-template` hard-blocks on it. See step 9.
+- **Native HubSpot Gmail sync status**: unknown/unconfirmed from this codebase for Mary's account — see step 9.
+- **Template copy**: the 16 seeded `templates` rows are placeholders (name + category only, from `supabase_schema_v12.sql`) — actual subject/body copy still needs to be written from the brand-voice guide before these are usable for a real send.
 
 ## Lead sources
 
