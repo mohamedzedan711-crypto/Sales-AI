@@ -1670,7 +1670,13 @@ function renderStageMenu(leads){
   const allStages = [...STAGES, ...extraStages];
   const rows = allStages.map(stage=>{
     const count = leads.filter(l=>(l.stage||'(no stage)')===stage).length;
-    return `<div class="stage-menu-row" onclick="openStage(${JSON.stringify(stage)})">
+    // Single-quoted JS string literal inside a double-quoted HTML
+    // attribute — NOT JSON.stringify(), which emits double quotes and
+    // would terminate the onclick="..." attribute early (exactly the
+    // bug this line used to have: the browser silently dropped the
+    // whole handler because the resulting markup was malformed, so
+    // clicking a row did nothing at all).
+    return `<div class="stage-menu-row" onclick="openStage('${String(stage).replace(/'/g, "\\'")}')">
       <span class="stage-menu-name">${escapeHtml(stage)}</span>
       <span class="stage-count-badge">${count}</span>
     </div>`;
