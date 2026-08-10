@@ -11,7 +11,11 @@
       "Bash(cd \"C:\\\\Users\\\\moham\\\\Downloads\\\\Social_Practice\\\\Sales AI\" && cp /tmp/index_new2.html index.html && echo done)",
       "Bash(awk 'NR==2478,NR==2862{next} {print}' index.html)",
       "Bash(awk 'NR==1339,NR==1586{next} {print}' index.html)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "mcp__66c53202-3fc5-48a7-bae6-adaca7ebd5d2__get_organization_details",
+      "mcp__66c53202-3fc5-48a7-bae6-adaca7ebd5d2__search_properties",
+      "mcp__66c53202-3fc5-48a7-bae6-adaca7ebd5d2__search_crm_objects",
+      "mcp__66c53202-3fc5-48a7-bae6-adaca7ebd5d2__get_crm_objects"
     ]
   }
 }

@@ -57,9 +57,32 @@ export async function createHubspotNote(
 
 // Fetches a single Contact/Company by id — used by hubspot-webhook-receiver
 // to pull the full record after a webhook only tells us an objectId changed.
+// The exact custom fields the live "Discovery Qualification Form" writes
+// to a contact on submission — confirmed against real submitted
+// contacts in the connected HubSpot portal (not guessed). Exported so
+// hubspotSync.ts's submission-detection logic can build a readable
+// summary from whichever of these are actually present, without a
+// second source of truth for the field list.
+export const DISCOVERY_QUALIFICATION_FORM_PROPERTIES = [
+  'monthly_budget', 'monthly_marketing_spend', 'dream_patient', 'practice_overview',
+  'practice_stage', 'past_agency_experience', 'past_agency_count', 'past_experience_details',
+  'vision_for_success', 'magic_wand_answer', 'growth_priorities', 'open_to_paid_ads',
+  'social_media_handler', 'current_marketing',
+];
+
 export async function getHubspotContactById(key: string, contactId: string): Promise<any> {
+  const properties = [
+    'email', 'firstname', 'lastname', 'company', 'phone', 'hs_lead_status', 'hs_analytics_source',
+    'createdate', 'lastmodifieddate',
+    // recent_conversion_event_name/date is how a form submission is
+    // detected at all (see hubspotSync.ts) — without these two, a
+    // submission on the Discovery Qualification Form is indistinguishable
+    // from any other property edit once it reaches this function.
+    'recent_conversion_event_name', 'recent_conversion_date',
+    ...DISCOVERY_QUALIFICATION_FORM_PROPERTIES,
+  ].join(',');
   const res = await fetch(
-    `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=email,firstname,lastname,company,phone,hs_lead_status,hs_analytics_source,createdate,lastmodifieddate`,
+    `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=${properties}`,
     { headers: { Authorization: `Bearer ${key}` } }
   );
   if (!res.ok) throw new Error('HubSpot getHubspotContactById returned ' + res.status);

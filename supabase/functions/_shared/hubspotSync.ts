@@ -9,6 +9,8 @@
 // overwrites contact_name, stage, notes, or anything else a human has
 // already set.
 
+import { DISCOVERY_QUALIFICATION_FORM_PROPERTIES } from './hubspot.ts';
+
 // Matches a HubSpot contact to an existing lead: first by
 // hubspot_contact_id (an exact link already made), then by email
 // (case-insensitive). Two sequential .maybeSingle() calls rather than one
@@ -67,6 +69,91 @@ export async function upsertCompanyFromHubspot(supabaseAdmin: any, hubspotCompan
     .single();
   if (error || !inserted) throw new Error(`Could not upsert company ${hubspotCompanyId}: ${error?.message}`);
   return inserted.id;
+}
+
+// Human-readable labels for the Discovery Qualification Form's answer
+// fields — used only when building the comm_log summary below, kept
+// next to DISCOVERY_QUALIFICATION_FORM_PROPERTIES (the source of truth
+// for which fields exist) rather than in hubspot.ts, since labeling is
+// a display concern specific to this logging path.
+const QUALIFICATION_ANSWER_LABELS: Record<string, string> = {
+  monthly_budget: 'Monthly Budget',
+  monthly_marketing_spend: 'Monthly Marketing Spend',
+  dream_patient: 'Dream Patient',
+  practice_overview: 'Practice Overview',
+  practice_stage: 'Practice Stage',
+  past_agency_experience: 'Past Agency Experience',
+  past_agency_count: 'Past Agency Count',
+  past_experience_details: 'Past Experience Details',
+  vision_for_success: 'Vision For Success',
+  magic_wand_answer: 'Magic Wand Answer',
+  growth_priorities: 'Growth Priorities',
+  open_to_paid_ads: 'Open To Paid Ads',
+  social_media_handler: 'Social Media Handler',
+  current_marketing: 'Current Marketing',
+};
+
+// The exact HubSpot form name this detects, read from
+// `recent_conversion_event_name` on the contact — matched by name
+// because HubSpot's CRM webhooks don't expose a distinct "which form"
+// event type, only generic property-change events (see
+// hubspot-webhook-receiver's header comment). Fragile if the form is
+// ever renamed in HubSpot; if submissions stop showing up in a lead's
+// history, check this string against the live form's name first.
+const QUALIFICATION_FORM_EVENT_NAME = 'Form: Discovery Qualification Form';
+
+// Writes a distinct, dated "Qualification form submitted" comm_log
+// entry the first time hubspot-webhook-receiver sees a NEW Discovery
+// Qualification Form submission on this contact — as opposed to
+// silently absorbing the answers into leads-table gap-filling with no
+// visible record, which is what happened before this existed (see
+// hubspot-webhook-receiver's header comment and DEPLOYMENT.md for the
+// full investigation this was built from).
+//
+// Idempotency: HubSpot's `recent_conversion_event_name` stays set to
+// the form's name for every subsequent property-change event on this
+// contact, not just the one that fired at submission time — so this
+// compares `recent_conversion_date` against
+// leads.last_qualification_form_submission_at and only logs once per
+// actual new submission (a real re-submission produces a newer
+// recent_conversion_date and gets logged again; an unrelated edit to
+// the same contact does not).
+export async function maybeLogQualificationFormSubmission(
+  supabaseAdmin: any,
+  leadId: string,
+  hubspotContact: any
+): Promise<void> {
+  const props = hubspotContact?.properties || {};
+  if (props.recent_conversion_event_name !== QUALIFICATION_FORM_EVENT_NAME) return;
+  if (!props.recent_conversion_date) return;
+
+  const submittedAt = new Date(props.recent_conversion_date);
+  const { data: lead } = await supabaseAdmin
+    .from('leads')
+    .select('last_qualification_form_submission_at')
+    .eq('id', leadId)
+    .maybeSingle();
+  const alreadyLoggedAt = lead?.last_qualification_form_submission_at
+    ? new Date(lead.last_qualification_form_submission_at)
+    : null;
+  if (alreadyLoggedAt && submittedAt <= alreadyLoggedAt) return;
+
+  const answerLines = DISCOVERY_QUALIFICATION_FORM_PROPERTIES
+    .filter((key) => props[key] != null && String(props[key]).trim() !== '')
+    .map((key) => `${QUALIFICATION_ANSWER_LABELS[key] || key}: ${props[key]}`);
+
+  await supabaseAdmin.from('comm_log').insert([{
+    lead_id: leadId,
+    type: 'qualification_form_submission',
+    subject: 'Qualification form submitted',
+    content: answerLines.length ? answerLines.join('\n') : '(No answers were on the submitted contact record.)',
+    sent_at: submittedAt.toISOString(),
+  }]);
+
+  await supabaseAdmin
+    .from('leads')
+    .update({ last_qualification_form_submission_at: submittedAt.toISOString() })
+    .eq('id', leadId);
 }
 
 // Upserts a leads row from a HubSpot Contact record (as returned by

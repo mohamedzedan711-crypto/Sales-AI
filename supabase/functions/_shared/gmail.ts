@@ -71,6 +71,29 @@ export function bodyWithLink(text: string, link: string): string {
     : `${html}<br><br>You can also ${anchor} to get started.`;
 }
 
+// General-purpose successor to bodyWithLink above, for templates that can
+// reference more than one link (the Templates settings editor's "insert
+// link" feature — see index.html's insertStoredLink() and
+// send-template/index.ts). Instead of one fixed LINK_MARKER, the body can
+// contain any number of markdown-style `[label](key)` spans anywhere in
+// the text, each independently resolved against a caller-supplied
+// key->URL map (send-template passes app_links rows, keyed by
+// app_links.key). Same escape-then-substitute ordering as bodyWithLink
+// and for the same reason: escaping a real <a> tag after inserting it
+// would mangle it, so the substitution runs on the already-escaped HTML.
+// A key with no matching link (not yet filled in under Settings > Forms
+// & Links, or a stale reference) falls back to plain unlinked text
+// instead of a broken href — sending the email should never fail over a
+// blank Forms & Links field.
+export function bodyWithLinks(text: string, links: Record<string, string | null | undefined>): string {
+  const html = textToHtmlBody(text);
+  return html.replace(/\[([^\[\]]*)\]\((\w+)\)/g, (full, label, key) => {
+    const url = links[key];
+    if (!url) return label;
+    return `<a href="${String(url).replace(/"/g, '&quot;')}">${label}</a>`;
+  });
+}
+
 // sendGmail's last argument is HTML, not plain text — every caller must
 // pass a body already run through textToHtmlBody (or otherwise built as
 // safe HTML), never a raw draft string.

@@ -1,7 +1,9 @@
 // The "outreach layer" send path — invoked only when a human clicks Send
 // after previewing a template (see index.html's Templates picker). Input:
-// { lead_id, template_id }. Fills merge fields, sends via Mary's Gmail,
-// logs to comm_log, and pushes a note to the contact's HubSpot timeline.
+// { lead_id, template_id }. Fills merge fields, resolves any stored-link
+// spans the Templates editor inserted (Settings > Forms & Links, via
+// bodyWithLinks — see _shared/gmail.ts), sends via Mary's Gmail, logs to
+// comm_log, and pushes a note to the contact's HubSpot timeline.
 //
 // NOT gated by the auto-send kill switch (_shared/autoSend.ts) — that
 // switch exists to hold back functions that could otherwise send
@@ -41,7 +43,7 @@
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
 import { requireCredential, getCredential } from '../_shared/credentials.ts';
-import { sendGmail, textToHtmlBody } from '../_shared/gmail.ts';
+import { sendGmail, bodyWithLinks } from '../_shared/gmail.ts';
 import { createHubspotNote } from '../_shared/hubspot.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
@@ -114,7 +116,16 @@ Deno.serve(async (req) => {
     const subject = typeof subject_override === 'string' && subject_override.trim() ? subject_override : fillMergeFields(template.subject, lead);
     const body = typeof body_override === 'string' && body_override.trim() ? body_override : fillMergeFields(template.body, lead);
 
-    await sendGmail(gmailCred.value, connectedEmail, lead.email, subject, textToHtmlBody(body));
+    // Templates can reference stored links (Settings > Forms & Links) as
+    // `[label](key)` spans anywhere in the body — resolved to real <a>
+    // tags here, at send time, against whatever's actually saved right
+    // now. A key with no saved URL yet degrades to plain text rather
+    // than blocking the send (see bodyWithLinks).
+    const { data: appLinks } = await supabaseAdmin.from('app_links').select('key, value');
+    const linkMap: Record<string, string | null> = {};
+    for (const row of appLinks || []) linkMap[row.key] = row.value;
+
+    await sendGmail(gmailCred.value, connectedEmail, lead.email, subject, bodyWithLinks(body, linkMap));
 
     await supabaseAdmin.from('comm_log').insert([{
       lead_id,

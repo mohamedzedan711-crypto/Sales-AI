@@ -329,15 +329,7 @@ tr:hover td{background:var(--bg-secondary);}
 .subtab.active{color:var(--pink);border-bottom-color:var(--pink);}
 
 /* settings */
-.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-content:start;}
 .settings-section-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.settings-accordion-item{padding:0;overflow:hidden;}
-.settings-accordion-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:22px;}
-.settings-accordion-header:hover .settings-section-title{color:var(--pink);}
-.settings-accordion-header .settings-section-title{margin-bottom:0;}
-.accordion-chevron{font-size:12px;color:var(--text-muted);transition:transform .2s ease;flex-shrink:0;}
-.settings-accordion-item.open .accordion-chevron{transform:rotate(90deg);color:var(--pink);}
-.settings-accordion-body{padding:0 22px 22px;}
 .conn-table{width:100%;font-size:13.5px;}
 .conn-table td{padding:10px 8px;border-bottom:1px solid var(--border);}
 .file-upload-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
@@ -352,7 +344,6 @@ tr:hover td{background:var(--bg-secondary);}
 .two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;}
 @media(max-width:1100px){
   .stat-grid{grid-template-columns:repeat(2,1fr);}
-  .settings-grid{grid-template-columns:1fr;}
   .two-col{grid-template-columns:1fr;}
   .nav-tabs{display:none;}
 }
@@ -458,155 +449,119 @@ tr:hover td{background:var(--bg-secondary);}
   <h1 class="page-title">Settings</h1>
   <p class="page-sub">Connections, credentials, and the auto-send kill switch — all in one place.</p>
 
-  <div class="settings-grid">
-    <div>
-      <div class="card settings-accordion-item" id="acc-item-autosend">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('autosend')">
-          <div class="settings-section-title">🚦 Auto-Send / Auto-Respond</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-autosend">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Master switch for every automatic send this system can trigger on its own — questionnaire emails, booking confirmation emails, and the HubSpot note push after a call transcript. While OFF, all of those are skipped and logged in Automation Activity below instead of sending. Starts OFF. Stored in Supabase, so it persists across redeploys. Gated behind the same admin password as Settings → Integrations below — enter it there first, or the toggle will reject the change.</p>
-          <label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer;">
-            <input type="checkbox" id="auto_send_enabled" onchange="saveAutoSendSetting()">
-            <span id="autoSendStatusLabel">Auto-Send / Auto-Respond: OFF</span>
-          </label>
-          <div id="autoSendStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-        </div>
-      </div>
+  <button class="stage-switcher-btn" style="margin-bottom:16px;" onclick="openSettingsSidebar()">☰ <span id="currentSettingsCategoryLabel">Auto-Send / Auto-Respond</span></button>
 
-      <div class="card settings-accordion-item" id="acc-item-crm">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('crm')">
-          <div class="settings-section-title">🔗 CRM</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-crm">
-          <div class="form-row"><label>HubSpot API Key <span id="badge-hubspot_key"></span></label>
-            <input type="password" id="hubspot_key"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-sm" onclick="saveSetting('hubspot_key')">Save</button>
-            <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
-          </div>
-          <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
-        </div>
-      </div>
+  <div class="card settings-cat" data-settings-cat="autosend" id="settings-cat-autosend">
+    <div class="settings-section-title" style="margin-bottom:14px;">🚦 Auto-Send / Auto-Respond</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Master switch for every automatic send this system can trigger on its own — questionnaire emails, booking confirmation emails, and the HubSpot note push after a call transcript. While OFF, all of those are skipped and logged in Automation Activity below instead of sending. Starts OFF. Stored in Supabase, so it persists across redeploys. Gated behind the same admin password as Settings → Integrations below — enter it there first, or the toggle will reject the change.</p>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer;">
+      <input type="checkbox" id="auto_send_enabled" onchange="saveAutoSendSetting()">
+      <span id="autoSendStatusLabel">Auto-Send / Auto-Respond: OFF</span>
+    </label>
+    <div id="autoSendStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+  </div>
 
-      <div class="card settings-accordion-item" id="acc-item-email">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('email')">
-          <div class="settings-section-title">✉️ Email</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-email">
-          <div class="form-row"><label>Gmail API Key <span id="badge-gmail_key"></span></label>
-            <input type="password" id="gmail_key"></div>
-          <button class="btn btn-sm" onclick="saveSetting('gmail_key')">Save</button>
-          <div class="form-row" style="margin-top:14px;"><label>Mary's Email Address</label>
-            <input type="text" id="mary_email" placeholder="mary@socialpractice.co"></div>
-          <div class="form-row"><label>Default Reply Name</label>
-            <input type="text" id="reply_name" placeholder="Zane, on behalf of Mary Robb"></div>
-          <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
-        </div>
-      </div>
-
-      <div class="card settings-accordion-item" id="acc-item-qualification">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('qualification')">
-          <div class="settings-section-title">🎯 Qualification Thresholds</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-qualification">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
-          <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
-            <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
-          <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
-            <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
-          <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
-          <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-        </div>
-      </div>
-
+  <div class="card settings-cat hidden" data-settings-cat="crm" id="settings-cat-crm">
+    <div class="settings-section-title" style="margin-bottom:14px;">🔗 CRM</div>
+    <div class="form-row"><label>HubSpot API Key <span id="badge-hubspot_key"></span></label>
+      <input type="password" id="hubspot_key"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm" onclick="saveSetting('hubspot_key')">Save</button>
+      <button class="btn btn-sm" onclick="testHubspotConnection()">Test HubSpot Connection</button>
     </div>
+    <div id="hubspotStatusBlock" style="margin-top:8px;font-size:12.5px;color:var(--text-muted);"></div>
+  </div>
 
-    <div>
-      <div class="card settings-accordion-item" id="acc-item-calls">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('calls')">
-          <div class="settings-section-title">📞 Calls &amp; Proposals</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-calls">
-          <div class="form-row"><label>Read.ai API Key <span id="badge-readai_key"></span></label><input type="password" id="readai_key" placeholder="Paste your Read.ai API key here"></div>
-          <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at read.ai</div>
-          <button class="btn btn-sm" onclick="saveSetting('readai_key')">Save</button>
-          <div class="form-row" style="margin-top:14px;"><label>Prospero API Key <span id="badge-prospero_key"></span></label><input type="password" id="prospero_key"></div>
-          <button class="btn btn-sm" onclick="saveSetting('prospero_key')">Save</button>
-        </div>
-      </div>
+  <div class="card settings-cat hidden" data-settings-cat="email" id="settings-cat-email">
+    <div class="settings-section-title" style="margin-bottom:14px;">✉️ Email</div>
+    <div class="form-row"><label>Gmail API Key <span id="badge-gmail_key"></span></label>
+      <input type="password" id="gmail_key"></div>
+    <button class="btn btn-sm" onclick="saveSetting('gmail_key')">Save</button>
+    <div class="form-row" style="margin-top:14px;"><label>Mary's Email Address</label>
+      <input type="text" id="mary_email" placeholder="mary@socialpractice.co"></div>
+    <div class="form-row"><label>Default Reply Name</label>
+      <input type="text" id="reply_name" placeholder="Zane, on behalf of Mary Robb"></div>
+    <button class="btn btn-sm" onclick="saveSetting('mary_email'); saveSetting('reply_name');">Save</button>
+  </div>
 
+  <div class="card settings-cat hidden" data-settings-cat="qualification" id="settings-cat-qualification">
+    <div class="settings-section-title" style="margin-bottom:14px;">🎯 Qualification Thresholds</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Used by the async qualification funnel to score new leads from the questionnaire. Pre-filled from Mary's VA briefing doc ($2,000 floor / $4,000 priority) as a starting point — not yet confirmed with her directly. Freely editable.</p>
+    <div class="form-row"><label>Minimum Monthly Budget (hard floor — below this, a lead is never qualified)</label>
+      <input type="number" id="qc_min_budget_floor" placeholder="2000"></div>
+    <div class="form-row"><label>Ideal / Priority Monthly Budget (at or above this, a lead is flagged priority)</label>
+      <input type="number" id="qc_ideal_budget_threshold" placeholder="4000"></div>
+    <button class="btn btn-pink btn-sm" onclick="saveQualificationConfig()">Save Thresholds</button>
+    <div id="qualificationConfigStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+  </div>
 
-      <div class="card settings-accordion-item" id="acc-item-database">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('database')">
-          <div class="settings-section-title">🗄️ Database</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-database">
-          <div class="form-row"><label>Supabase Project URL</label><input type="text" id="supabase_url" placeholder="https://xxxx.supabase.co"></div>
-          <div class="form-row"><label>Supabase Anon Key</label><input type="password" id="supabase_anon_key"></div>
-          <div class="form-row" style="display:flex;align-items:center;gap:10px;">
-            <label style="margin:0;">Enable Supabase</label>
-            <input type="checkbox" id="supabase_enabled" style="width:auto;" onchange="toggleSupabaseEnabled()">
-            <span id="supabaseStatusBadge"></span>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <button class="btn btn-sm" onclick="saveSupabaseSettings()">Save</button>
-            <button class="btn btn-sm" onclick="testSupabaseConnection()">Test Connection</button>
-            <button class="btn btn-navy btn-sm" onclick="migrateToSupabase()">Migrate to Supabase</button>
-          </div>
-          <div id="migrateProgress" class="hidden" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
-        </div>
-      </div>
+  <div class="card settings-cat hidden" data-settings-cat="calls" id="settings-cat-calls">
+    <div class="settings-section-title" style="margin-bottom:14px;">📞 Calls &amp; Proposals</div>
+    <div class="form-row"><label>Read.ai API Key <span id="badge-readai_key"></span></label><input type="password" id="readai_key" placeholder="Paste your Read.ai API key here"></div>
+    <div class="muted" style="font-size:12px;margin-top:-6px;margin-bottom:10px;">Get your API key at read.ai</div>
+    <button class="btn btn-sm" onclick="saveSetting('readai_key')">Save</button>
+    <div class="form-row" style="margin-top:14px;"><label>Prospero API Key <span id="badge-prospero_key"></span></label><input type="password" id="prospero_key"></div>
+    <button class="btn btn-sm" onclick="saveSetting('prospero_key')">Save</button>
+  </div>
 
-      <div class="card settings-accordion-item" id="acc-item-integrations">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('integrations')">
-          <div class="settings-section-title">🔌 Integrations (Backend Automation)</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-integrations">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">These power the async qualification funnel running in Supabase Edge Functions — separate from the API keys elsewhere on this page, which power this app's own in-browser features. Each one goes live the moment you save it here, no redeploy needed.</p>
-          <div class="form-row"><label>Admin Password</label>
-            <input type="password" id="integrationsAdminPassword" placeholder="Set once via the ADMIN_PANEL_PASSWORD secret"></div>
-          <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
-          <div id="integrationRows"></div>
-          <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
-
-          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-            <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Automation Activity</div>
-            <p class="muted" style="font-size:11.5px;margin-bottom:10px;">Anything the automations above couldn't finish on their own (a missed HubSpot match, an expired key, a failed send) shows up here instead of silently failing — check back after connecting everything for the first time.</p>
-            <div id="automationFailuresList"></div>
-            <div id="automationFailuresEmpty" class="chat-empty">No automation issues right now.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card settings-accordion-item" id="acc-item-connstatus">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('connstatus')">
-          <div class="settings-section-title">📊 Connection Status</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-connstatus">
-          <table class="conn-table" id="connStatusTable"></table>
-        </div>
-      </div>
-
-      <div class="card settings-accordion-item" id="acc-item-cleanup">
-        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('cleanup')">
-          <div class="settings-section-title">🧹 Data Cleanup</div>
-          <span class="accordion-chevron">▸</span>
-        </div>
-        <div class="settings-accordion-body hidden" id="acc-body-cleanup">
-          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Scans for known test/sample leads (HubSpot's default demo contacts, anything with "test" in the name, and a couple of known dev-testing entries). This only ever identifies candidates — nothing is deleted until you review the list and check off the ones you actually want removed.</p>
-          <button class="btn" onclick="scanForFakeLeads()">Scan for Test/Sample Leads</button>
-        </div>
-      </div>
+  <div class="card settings-cat hidden" data-settings-cat="database" id="settings-cat-database">
+    <div class="settings-section-title" style="margin-bottom:14px;">🗄️ Database</div>
+    <div class="form-row"><label>Supabase Project URL</label><input type="text" id="supabase_url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="form-row"><label>Supabase Anon Key</label><input type="password" id="supabase_anon_key"></div>
+    <div class="form-row" style="display:flex;align-items:center;gap:10px;">
+      <label style="margin:0;">Enable Supabase</label>
+      <input type="checkbox" id="supabase_enabled" style="width:auto;" onchange="toggleSupabaseEnabled()">
+      <span id="supabaseStatusBadge"></span>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <button class="btn btn-sm" onclick="saveSupabaseSettings()">Save</button>
+      <button class="btn btn-sm" onclick="testSupabaseConnection()">Test Connection</button>
+      <button class="btn btn-navy btn-sm" onclick="migrateToSupabase()">Migrate to Supabase</button>
+    </div>
+    <div id="migrateProgress" class="hidden" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+  </div>
+
+  <div class="card settings-cat hidden" data-settings-cat="integrations" id="settings-cat-integrations">
+    <div class="settings-section-title" style="margin-bottom:14px;">🔌 Integrations (Backend Automation)</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">These power the async qualification funnel running in Supabase Edge Functions — separate from the API keys elsewhere on this page, which power this app's own in-browser features. Each one goes live the moment you save it here, no redeploy needed.</p>
+    <div class="form-row"><label>Admin Password</label>
+      <input type="password" id="integrationsAdminPassword" placeholder="Set once via the ADMIN_PANEL_PASSWORD secret"></div>
+    <p class="muted" style="font-size:11.5px;margin-top:-8px;margin-bottom:14px;">Required to save, disconnect, or connect anything below — entered once, cached in this browser.</p>
+    <div id="integrationRows"></div>
+    <div id="integrationsStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:4px;">Automation Activity</div>
+      <p class="muted" style="font-size:11.5px;margin-bottom:10px;">Anything the automations above couldn't finish on their own (a missed HubSpot match, an expired key, a failed send) shows up here instead of silently failing — check back after connecting everything for the first time.</p>
+      <div id="automationFailuresList"></div>
+      <div id="automationFailuresEmpty" class="chat-empty">No automation issues right now.</div>
+    </div>
+  </div>
+
+  <div class="card settings-cat hidden" data-settings-cat="connstatus" id="settings-cat-connstatus">
+    <div class="settings-section-title" style="margin-bottom:14px;">📊 Connection Status</div>
+    <table class="conn-table" id="connStatusTable"></table>
+  </div>
+
+  <div class="card settings-cat hidden" data-settings-cat="cleanup" id="settings-cat-cleanup">
+    <div class="settings-section-title" style="margin-bottom:14px;">🧹 Data Cleanup</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Scans for known test/sample leads (HubSpot's default demo contacts, anything with "test" in the name, and a couple of known dev-testing entries). This only ever identifies candidates — nothing is deleted until you review the list and check off the ones you actually want removed.</p>
+    <button class="btn" onclick="scanForFakeLeads()">Scan for Test/Sample Leads</button>
+  </div>
+
+  <div class="card settings-cat hidden" data-settings-cat="templates" id="settings-cat-templates">
+    <div class="settings-section-title" style="margin-bottom:14px;">📄 Templates</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">The canned copy Mary sends from the Templates button on a lead's card — grouped by category. Click one to write its real subject/body; merge fields and stored links (Settings → Forms &amp; Links) can be inserted while editing.</p>
+    <div id="templatesSettingsList"></div>
+  </div>
+
+  <div class="card settings-cat hidden" data-settings-cat="links" id="settings-cat-links">
+    <div class="settings-section-title" style="margin-bottom:14px;">📋 Forms &amp; Links</div>
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Two reusable, org-wide URLs — not tied to any specific lead. These are what populate the "insert link" choices in the Templates editor above.</p>
+    <div class="form-row"><label>Qualification Form URL</label><input type="text" id="linkQualificationForm" placeholder="https://..."></div>
+    <div class="form-row"><label>Booking Meeting URL</label><input type="text" id="linkBookingMeeting" placeholder="https://..."></div>
+    <button class="btn btn-pink btn-sm" onclick="saveAppLinks()">Save</button>
+    <div id="appLinksStatus" class="muted" style="font-size:12px;margin-top:8px;"></div>
   </div>
 </section>
 
@@ -967,21 +922,49 @@ async function syncStageToHubspot(lead, stage){
 }
 
 /* ===================== SETTINGS ===================== */
-/* Exclusive accordion — only one section's body visible at a time, all
-   collapsed by default. This toggles display via a CSS class only, never
-   touches the input elements themselves, so any unsaved typing inside a
-   section survives collapsing/expanding (and switching sections) intact. */
-function toggleSettingsAccordion(key){
-  const body = document.getElementById('acc-body-'+key);
-  if(!body) return;
-  const wasOpen = !body.classList.contains('hidden');
-  document.querySelectorAll('.settings-accordion-body').forEach(b=>b.classList.add('hidden'));
-  document.querySelectorAll('.settings-accordion-item').forEach(i=>i.classList.remove('open'));
-  if(!wasOpen){
-    body.classList.remove('hidden');
-    const item = document.getElementById('acc-item-'+key);
-    if(item) item.classList.add('open');
-  }
+// Same ☰ sidebar pattern as the Pipeline page (openSidebar/closeSidebar/
+// selectStage) — reuses the identical #sidebarRoot mount point and CSS
+// classes, since the two sidebars are never open at the same time (only
+// one tab is ever visible). Replaces the old exclusive-accordion system:
+// now exactly one category's .card is un-hidden at a time instead of
+// one body collapsing/expanding within an always-visible header list.
+const SETTINGS_CATEGORIES = [
+  { key: 'autosend', label: 'Auto-Send / Auto-Respond' },
+  { key: 'crm', label: 'CRM' },
+  { key: 'email', label: 'Email' },
+  { key: 'qualification', label: 'Qualification Thresholds' },
+  { key: 'calls', label: 'Calls & Proposals' },
+  { key: 'database', label: 'Database' },
+  { key: 'integrations', label: 'Integrations (Backend Automation)' },
+  { key: 'connstatus', label: 'Connection Status' },
+  { key: 'cleanup', label: 'Data Cleanup' },
+  { key: 'templates', label: 'Templates' },
+  { key: 'links', label: 'Forms & Links' },
+];
+let selectedSettingsCategory = 'autosend';
+function showSettingsCategory(key){
+  selectedSettingsCategory = key;
+  document.querySelectorAll('.settings-cat').forEach(el=>el.classList.toggle('hidden', el.dataset.settingsCat!==key));
+  const cat = SETTINGS_CATEGORIES.find(c=>c.key===key);
+  document.getElementById('currentSettingsCategoryLabel').textContent = cat ? cat.label : key;
+}
+function openSettingsSidebar(){
+  const rows = SETTINGS_CATEGORIES.map(({key,label})=>
+    `<div class="stage-sidebar-row${key===selectedSettingsCategory?' active':''}" onclick="selectSettingsCategory('${key}')">
+      <span class="stage-sidebar-name">${escapeHtml(label)}</span>
+    </div>`
+  ).join('');
+  document.getElementById('sidebarRoot').innerHTML = `
+    <div class="sidebar-overlay" id="stageSidebarOverlay" onclick="if(event.target.id==='stageSidebarOverlay') closeSidebar()">
+      <div class="stage-sidebar">
+        <div class="stage-sidebar-header"><span>Settings</span><button class="modal-close" onclick="closeSidebar()">&times;</button></div>
+        <div class="stage-sidebar-body">${rows}</div>
+      </div>
+    </div>`;
+}
+function selectSettingsCategory(key){
+  showSettingsCategory(key);
+  closeSidebar();
 }
 function saveSetting(key){
   const el = document.getElementById(key);
@@ -1516,7 +1499,10 @@ function switchTab(name){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='inbox') renderRescheduleFlags();
-  if(name==='settings'){ loadAutoSendSetting(); loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures(); }
+  if(name==='settings'){
+    loadAutoSendSetting(); loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures();
+    renderTemplatesSettingsCategory(); loadAppLinks();
+  }
 }
 
 /* ===================== SEED DATA ===================== */
@@ -1871,6 +1857,119 @@ async function confirmSendTemplate(leadId, templateId){
     if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
   }
 }
+
+/* ===================== TEMPLATES SETTINGS (real content editing) ===================== */
+// Real subject/body editing for the `templates` table — previously
+// every row was just a placeholder seeded by supabase_schema_v12.sql.
+const MERGE_FIELD_KEYS = ['first_name','last_name','contact_name','practice_name','business_name','email'];
+let templatesSettingsCache = [];
+async function renderTemplatesSettingsCategory(){
+  if(!supabaseClient){ document.getElementById('templatesSettingsList').innerHTML = '<p class="muted">Connect Supabase in Settings → Database to manage templates.</p>'; return; }
+  const { data, error } = await supabaseClient.from('templates').select('*').order('category').order('sort_order');
+  if(error){ document.getElementById('templatesSettingsList').innerHTML = `<p class="muted">Could not load templates: ${escapeHtml(error.message)}</p>`; return; }
+  templatesSettingsCache = data || [];
+  const groups = {};
+  templatesSettingsCache.forEach(t=>{ (groups[t.category] = groups[t.category]||[]).push(t); });
+  const catKeys = Object.keys(groups);
+  document.getElementById('templatesSettingsList').innerHTML = catKeys.length ? catKeys.map(cat=>`
+    <div class="section-label">${escapeHtml(TEMPLATE_CATEGORY_LABELS[cat] || cat)}</div>
+    <div style="margin-bottom:14px;">
+      ${groups[cat].map(t=>`<div class="list-item list-item-clickable" onclick="openTemplateEditModal('${t.id}')">
+        <div>
+          <div class="list-item-title">${escapeHtml(t.name)}</div>
+          <div class="list-item-sub">${t.subject && t.subject!=='Subject TBD — placeholder' ? escapeHtml(t.subject) : 'Not written yet — placeholder copy'}</div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('') : '<p class="muted">No templates yet.</p>';
+}
+function findTemplateById(id){ return templatesSettingsCache.find(t=>t.id===id); }
+function openTemplateEditModal(id){
+  const t = findTemplateById(id);
+  if(!t) return;
+  const linkOptions = appLinksCache.map(l=>`<option value="${l.key}">${escapeHtml(l.label)}</option>`).join('');
+  openModal(`Edit Template — ${t.name}`, `
+    <div class="form-row"><label>Subject</label><input type="text" id="tplEditSubject" value="${escapeHtml(t.subject||'')}"></div>
+    <div class="form-row">
+      <label>Body</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <select id="tplMergeFieldSelect">${MERGE_FIELD_KEYS.map(k=>`<option value="${k}">{{${k}}}</option>`).join('')}</select>
+        <button class="btn btn-sm" type="button" onclick="insertMergeFieldIntoTemplateBody()">+ Insert Field</button>
+        <select id="tplLinkSelect">${linkOptions || '<option value="">No stored links yet</option>'}</select>
+        <button class="btn btn-sm" type="button" onclick="insertStoredLinkIntoTemplateBody()" ${linkOptions?'':'disabled title="Add links in Settings → Forms & Links first"'}>+ Insert Link</button>
+      </div>
+      <textarea id="tplEditBody" rows="12">${escapeHtml(t.body||'')}</textarea>
+      <p class="muted" style="font-size:11.5px;margin-top:6px;">Select text first, then "Insert Link" to turn it into a hyperlink — e.g. selecting "click here" and choosing Qualification Form stores it as <code>[click here](qualification_form)</code>, which becomes a real link when this template is sent.</p>
+    </div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="saveTemplateEdit('${id}')">Save</button>
+  `);
+}
+function insertMergeFieldIntoTemplateBody(){
+  const ta = document.getElementById('tplEditBody');
+  const field = document.getElementById('tplMergeFieldSelect').value;
+  const insert = `{{${field}}}`;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  ta.value = ta.value.slice(0,start) + insert + ta.value.slice(end);
+  const pos = start + insert.length;
+  ta.focus(); ta.setSelectionRange(pos,pos);
+}
+function insertStoredLinkIntoTemplateBody(){
+  const ta = document.getElementById('tplEditBody');
+  const key = document.getElementById('tplLinkSelect').value;
+  if(!key) return;
+  const link = appLinksCache.find(l=>l.key===key);
+  const label = link ? link.label : key;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selectedText = ta.value.slice(start,end);
+  const insert = `[${selectedText || label}](${key})`;
+  ta.value = ta.value.slice(0,start) + insert + ta.value.slice(end);
+  const pos = start + insert.length;
+  ta.focus(); ta.setSelectionRange(pos,pos);
+}
+async function saveTemplateEdit(id){
+  const subject = document.getElementById('tplEditSubject').value.trim();
+  const body = document.getElementById('tplEditBody').value;
+  if(!subject || !body.trim()){ toast('Subject and body are both required.','error'); return; }
+  const { error } = await supabaseClient.from('templates').update({ subject, body }).eq('id', id);
+  if(error){ toast('Could not save template: '+error.message,'error'); return; }
+  toast('Template saved.','success');
+  closeModal();
+  await renderTemplatesSettingsCategory();
+}
+
+/* ===================== FORMS & LINKS SETTINGS ===================== */
+// Two org-wide URLs (not per-lead) that the Templates editor above
+// offers as "insert link" choices — see app_links (supabase_schema_v14.sql)
+// and _shared/gmail.ts's bodyWithLinks() for how a stored link actually
+// gets resolved into a real <a> tag at send time.
+let appLinksCache = [];
+async function loadAppLinks(){
+  if(!supabaseClient) return;
+  const { data, error } = await supabaseClient.from('app_links').select('*');
+  if(error){ document.getElementById('appLinksStatus').textContent = 'Could not load: '+error.message; return; }
+  appLinksCache = data || [];
+  const qual = appLinksCache.find(l=>l.key==='qualification_form');
+  const booking = appLinksCache.find(l=>l.key==='booking_meeting');
+  const qualInput = document.getElementById('linkQualificationForm');
+  const bookingInput = document.getElementById('linkBookingMeeting');
+  if(qualInput) qualInput.value = qual?.value || '';
+  if(bookingInput) bookingInput.value = booking?.value || '';
+}
+async function saveAppLinks(){
+  const qual = document.getElementById('linkQualificationForm').value.trim();
+  const booking = document.getElementById('linkBookingMeeting').value.trim();
+  const { error } = await supabaseClient.from('app_links').upsert([
+    { key: 'qualification_form', label: 'Qualification Form', value: qual || null, updated_at: new Date().toISOString() },
+    { key: 'booking_meeting', label: 'Booking Meeting', value: booking || null, updated_at: new Date().toISOString() },
+  ]);
+  const statusEl = document.getElementById('appLinksStatus');
+  if(error){ statusEl.textContent = 'Could not save: '+error.message; toast('Could not save links: '+error.message,'error'); return; }
+  statusEl.textContent = 'Saved.';
+  toast('Links saved.','success');
+  await loadAppLinks();
+}
+
 // Clicking a card opens this — same meta/qualification-override/action
 // content the old expandable table row showed, just inside a modal
 // instead of a <tr> now that there's no table. Nothing inside
@@ -1888,13 +1987,8 @@ function leadDetailModalHtml(l){
     ${qualificationOverrideBlockHtml(l)}
     <div class="actions-cell">
       <button class="btn btn-sm btn-pink" onclick="openTemplatesModal('${l.id}')">📄 Templates</button>
-      <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
-      <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
       ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
       ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
-      <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
-      <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
-      <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
       <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
       <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
       <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="closeModal();openDeleteLeadModal('${l.id}')">✕</button>

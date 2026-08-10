@@ -23,6 +23,28 @@
 // it upserts data, it never sends anything (no email, no outreach). The
 // "outreach layer" (send-template) is separate and stays manual.
 //
+// FORM SUBMISSIONS: HubSpot's CRM webhooks have no distinct "a form was
+// submitted" event type — a form submission arrives here as an ordinary
+// contact.propertyChange, indistinguishable at the event level from a
+// manual edit in HubSpot's UI. Investigated for the "Discovery
+// Qualification Form" specifically (a real, live HubSpot-native form,
+// confirmed against actual submitted contacts in the connected portal —
+// this is NOT the same thing as this repo's own questionnaire.html,
+// which has no HubSpot involvement at all): before this comment was
+// added, a submission's answers were fetched by nothing (they weren't
+// even in getHubspotContactById's properties list) and, even if they
+// had been, upsertLeadFromHubspotContact only fills leads-table gaps —
+// no distinguishable event ever reached comm_log. Fixed by (1) widening
+// getHubspotContactById's properties to include the form's answer
+// fields plus HubSpot's generic recent_conversion_event_name/date, and
+// (2) maybeLogQualificationFormSubmission() below, which recognizes
+// that specific form by name and writes a dated comm_log entry the
+// first time it sees a new submission (idempotent via
+// leads.last_qualification_form_submission_at — see
+// _shared/hubspotSync.ts and supabase_schema_v14.sql). See
+// DEPLOYMENT.md for the full writeup, including why this can't be made
+// fully robust without a distinct HubSpot Forms webhook.
+//
 // No LLM calls anywhere in this file.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
@@ -33,7 +55,11 @@ import {
   getAssociatedCompanyId,
   getAssociatedContactIds,
 } from '../_shared/hubspot.ts';
-import { upsertLeadFromHubspotContact, upsertCompanyFromHubspot } from '../_shared/hubspotSync.ts';
+import {
+  upsertLeadFromHubspotContact,
+  upsertCompanyFromHubspot,
+  maybeLogQualificationFormSubmission,
+} from '../_shared/hubspotSync.ts';
 import { verifyHubspotSignatureV3 } from '../_shared/hubspotWebhookAuth.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { logAutomationFailure } from '../_shared/automationLog.ts';
@@ -121,7 +147,18 @@ Deno.serve(async (req) => {
             );
           }
 
-          await upsertLeadFromHubspotContact(supabaseAdmin, contact, companyId);
+          const { id: leadId } = await upsertLeadFromHubspotContact(supabaseAdmin, contact, companyId);
+          try {
+            await maybeLogQualificationFormSubmission(supabaseAdmin, leadId, contact);
+          } catch (e) {
+            // Best-effort — the lead upsert above already succeeded either way.
+            await logAutomationFailure(
+              supabaseAdmin,
+              'hubspot-webhook-receiver',
+              `Contact ${objectId}: lead upserted, but logging a possible qualification-form submission failed: ${String(e)}`,
+              leadId
+            );
+          }
           processed++;
         } else {
           const company = await getHubspotCompanyById(hubspotCred.value, objectId);
@@ -131,7 +168,17 @@ Deno.serve(async (req) => {
           for (const contactId of contactIds) {
             try {
               const contact = await getHubspotContactById(hubspotCred.value, contactId);
-              await upsertLeadFromHubspotContact(supabaseAdmin, contact, companyId);
+              const { id: leadId } = await upsertLeadFromHubspotContact(supabaseAdmin, contact, companyId);
+              try {
+                await maybeLogQualificationFormSubmission(supabaseAdmin, leadId, contact);
+              } catch (e) {
+                await logAutomationFailure(
+                  supabaseAdmin,
+                  'hubspot-webhook-receiver',
+                  `Company ${objectId} -> contact ${contactId}: lead upserted, but logging a possible qualification-form submission failed: ${String(e)}`,
+                  leadId
+                );
+              }
             } catch (e) {
               skipped.push(`company ${objectId} -> contact ${contactId}`);
               await logAutomationFailure(
