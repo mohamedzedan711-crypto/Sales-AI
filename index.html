@@ -244,19 +244,22 @@ tr:hover td{background:var(--bg-secondary);}
 .chat-input-row input[type=text]{flex:1;}
 .chat-upload-btn{cursor:pointer;font-size:17px;padding:6px;}
 
-/* ===== KANBAN BOARD (Lead Board Redesign) ===== */
-.board-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
-.board-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;align-items:flex-start;}
-.board-column{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);width:280px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 320px);min-height:220px;transition:border-color .15s ease;}
-.board-column.drag-over{border-color:var(--pink);}
-.board-column-header{background:var(--stage-header-bg);color:var(--stage-header-text);padding:12px 14px;border-radius:var(--radius) var(--radius) 0 0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;}
-.board-column-title{font-size:12.5px;font-weight:700;letter-spacing:.2px;}
-.board-column-count{background:rgba(255,255,255,.22);border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700;}
-.board-column-body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;}
-.board-column-empty{color:var(--text-muted);font-size:12px;text-align:center;padding:16px 4px;}
+/* ===== STAGE DRILL-DOWN NAVIGATION (Drill-Down Stage Navigation) ===== */
+.pipeline-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.stage-menu-list{display:flex;flex-direction:column;gap:8px;}
+.stage-menu-row{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
+.stage-menu-row:hover{border-color:var(--pink);box-shadow:var(--shadow);}
+.stage-menu-name{font-weight:700;font-size:14px;color:var(--navy);}
+.stage-count-badge{background:var(--stage-header-bg);color:var(--stage-header-text);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;flex-shrink:0;}
+.pipeline-breadcrumb{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.breadcrumb-back{cursor:pointer;font-weight:700;font-size:13px;color:var(--pink);white-space:nowrap;}
+.breadcrumb-back:hover{text-decoration:underline;}
+.breadcrumb-current{font-weight:700;font-size:14px;color:var(--navy);}
+.stage-lead-list{display:flex;flex-direction:column;gap:10px;}
+.list-empty-note{color:var(--text-muted);font-size:13px;text-align:center;padding:30px 4px;}
+.lead-page-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
 .lead-card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
 .lead-card:hover{border-color:var(--pink);box-shadow:var(--shadow);}
-.lead-card.dragging{opacity:.4;}
 .lead-card-biz{font-weight:700;font-size:13.5px;color:var(--navy);margin-bottom:2px;}
 .lead-card-contact{font-size:12px;color:var(--text-muted);margin-bottom:2px;}
 .lead-card-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:9px;flex-wrap:wrap;}
@@ -373,26 +376,30 @@ tr:hover td{background:var(--bg-secondary);}
 
 <!-- ============ TAB 1: PIPELINE ============ -->
 <section class="tab-content active" id="tab-pipeline">
-  <h1 class="page-title">Sales Pipeline</h1>
-  <p class="page-sub">Every lead from first contact to signed contract.</p>
+  <div id="pipelineListView">
+    <h1 class="page-title">Sales Pipeline</h1>
+    <p class="page-sub">Every lead from first contact to signed contract.</p>
 
-  <div class="stat-grid" id="statGrid"></div>
+    <div class="stat-grid" id="statGrid"></div>
 
-  <div class="board-toolbar">
-    <div class="filter-bar" style="margin-bottom:0;">
-      <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderBoard()">
-      <select id="filterSource" onchange="renderBoard()"><option value="">All Sources</option></select>
-      <select id="filterPractice" onchange="renderBoard()"><option value="">All Practice Types</option></select>
-      <select id="filterQualification" onchange="renderBoard()"><option value="">All Qualification</option></select>
-      <label class="cold-toggle-row"><input type="checkbox" id="filterColdOnly" onchange="renderBoard()"> 🔥 Cold only</label>
+    <div class="pipeline-toolbar">
+      <div class="filter-bar" style="margin-bottom:0;">
+        <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderPipelineList()">
+        <select id="filterSource" onchange="renderPipelineList()"><option value="">All Sources</option></select>
+        <select id="filterPractice" onchange="renderPipelineList()"><option value="">All Practice Types</option></select>
+        <select id="filterQualification" onchange="renderPipelineList()"><option value="">All Qualification</option></select>
+        <label class="cold-toggle-row"><input type="checkbox" id="filterColdOnly" onchange="renderPipelineList()"> 🔥 Cold only</label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+        <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
-      <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
-    </div>
+
+    <div id="pipelineListArea"></div>
   </div>
 
-  <div class="board-wrap" id="boardWrap"></div>
+  <div id="pipelineLeadPage" class="hidden"></div>
 
 </section>
 
@@ -1605,7 +1612,7 @@ function sourcePillHtml(l){
 function leadCardHtml(l){
   const t = todayISO();
   const cold = isLeadCold(l, t);
-  return `<div class="lead-card" draggable="true" ondragstart="handleCardDragStart(event,'${l.id}')" ondragend="handleCardDragEnd(event)" onclick="openLeadDetailModal('${l.id}')">
+  return `<div class="lead-card" onclick="openLeadPage('${l.id}')">
     <div class="lead-card-biz">${escapeHtml(l.business_name)}${l.duplicate_flag ? `<span class="dup-flag-badge" title="Possible duplicate — click to review" onclick="event.stopPropagation();showDuplicateFlagInfo('${l.id}')">⚠ duplicate</span>` : ''}</div>
     <div class="lead-card-contact">${escapeHtml(l.contact_name||'')}${l.email ? ' · '+escapeHtml(l.email) : ''}</div>
     <div class="lead-card-row">
@@ -1619,50 +1626,27 @@ function leadCardHtml(l){
     ${cold ? `<div class="cold-tag">🔥 ${daysBetween(l.last_contact||t,t)}+ days cold</div>` : ''}
   </div>`;
 }
-function columnHtml(stage, leads){
-  const cards = leads.length ? leads.map(l=>leadCardHtml(l)).join('') : `<div class="board-column-empty">No leads here.</div>`;
-  return `<div class="board-column" id="col-${cssEscape(stage)}" ondragover="handleColumnDragOver(event,'${stage}')" ondragleave="handleColumnDragLeave(event,'${stage}')" ondrop="handleColumnDrop(event,'${stage}')">
-    <div class="board-column-header"><span class="board-column-title">${stage}</span><span class="board-column-count">${leads.length}</span></div>
-    <div class="board-column-body">${cards}</div>
-  </div>`;
-}
-function cssEscape(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'-'); }
-let draggingLeadId = null;
-function handleCardDragStart(e, id){
-  draggingLeadId = id;
-  e.dataTransfer.setData('text/plain', id);
-  e.target.classList.add('dragging');
-}
-function handleCardDragEnd(e){
-  draggingLeadId = null;
-  e.target.classList.remove('dragging');
-}
-function handleColumnDragOver(e, stage){
-  e.preventDefault();
-  document.getElementById('col-'+cssEscape(stage))?.classList.add('drag-over');
-}
-function handleColumnDragLeave(e, stage){
-  document.getElementById('col-'+cssEscape(stage))?.classList.remove('drag-over');
-}
-async function handleColumnDrop(e, stage){
-  e.preventDefault();
-  document.getElementById('col-'+cssEscape(stage))?.classList.remove('drag-over');
-  const id = e.dataTransfer.getData('text/plain') || draggingLeadId;
-  if(!id) return;
-  const lead = findLeadById(id);
-  if(lead && lead.stage===stage) return;
-  await changeLeadStage(id, stage);
-}
-async function renderBoard(){
-  allLeadsCache = await LeadsDB.getAll();
+
+/* ---- Level 1/2: stage menu <-> lead list within a stage ---- */
+// pipelineView.level: 1 = stage menu (default), 2 = leads within a stage.
+// Purely in-memory — no URL change, mirroring how tab-switching itself
+// works in this app. Only Level 3 (an individual lead) is a real route;
+// see openLeadPage()/renderLeadPage() below.
+let pipelineView = { level: 1, stage: null };
+// Snapshot of pipelineView taken the moment a lead page is opened, so
+// Back from Level 3 restores exactly which stage/filters the person
+// came from instead of dumping them back to the stage menu.
+let pipelineReturnView = { level: 1, stage: null };
+let currentLeadPageId = null; // set while the /leads/:id full page is showing
+
+function getFilteredLeads(){
   const search = document.getElementById('leadSearch').value.toLowerCase();
   const fSource = document.getElementById('filterSource').value;
   const fPractice = document.getElementById('filterPractice').value;
   const fQual = document.getElementById('filterQualification').value;
   const coldOnly = document.getElementById('filterColdOnly').checked;
   const t = todayISO();
-
-  const leads = allLeadsCache.filter(l=>{
+  return allLeadsCache.filter(l=>{
     if(search && !(`${l.business_name} ${l.contact_name}`.toLowerCase().includes(search))) return false;
     if(fSource && l.source!==fSource) return false;
     if(fPractice && l.practice_type!==fPractice) return false;
@@ -1670,17 +1654,107 @@ async function renderBoard(){
     if(coldOnly && !isLeadCold(l, t)) return false;
     return true;
   });
-
-  // Any lead whose stage isn't one of the 9 known columns (stale data,
-  // a direct DB edit, etc.) still gets a column rather than silently
-  // vanishing from the board.
+}
+async function renderPipelineList(){
+  allLeadsCache = await LeadsDB.getAll();
+  const leads = getFilteredLeads();
+  if(pipelineView.level===2) renderStageLeadList(pipelineView.stage, leads);
+  else renderStageMenu(leads);
+}
+function renderStageMenu(leads){
+  // Any lead whose stage isn't one of the 9 known stages (stale data, a
+  // direct DB edit, etc.) still gets a row rather than silently
+  // vanishing from the menu.
   const known = new Set(STAGES);
   const extraStages = [...new Set(leads.filter(l=>!known.has(l.stage)).map(l=>l.stage||'(no stage)'))];
-  const allColumns = [...STAGES, ...extraStages];
+  const allStages = [...STAGES, ...extraStages];
+  const rows = allStages.map(stage=>{
+    const count = leads.filter(l=>(l.stage||'(no stage)')===stage).length;
+    return `<div class="stage-menu-row" onclick="openStage(${JSON.stringify(stage)})">
+      <span class="stage-menu-name">${escapeHtml(stage)}</span>
+      <span class="stage-count-badge">${count}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('pipelineListArea').innerHTML = `<div class="stage-menu-list">${rows}</div>`;
+}
+function openStage(stage){
+  pipelineView = { level: 2, stage };
+  renderPipelineList();
+}
+function backToStageMenu(){
+  pipelineView = { level: 1, stage: null };
+  renderPipelineList();
+}
+function renderStageLeadList(stage, leads){
+  const stageLeads = leads.filter(l=>(l.stage||'(no stage)')===stage);
+  const cards = stageLeads.length ? stageLeads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this stage match your filters.</div>`;
+  document.getElementById('pipelineListArea').innerHTML = `
+    <div class="pipeline-breadcrumb">
+      <span class="breadcrumb-back" onclick="backToStageMenu()">☰ Back to Stages</span>
+      <span class="breadcrumb-current">${escapeHtml(stage)} (${stageLeads.length})</span>
+    </div>
+    <div class="stage-lead-list">${cards}</div>`;
+}
 
-  document.getElementById('boardWrap').innerHTML = allColumns.map(stage=>
-    columnHtml(stage, leads.filter(l=>(l.stage||'(no stage)')===stage))
-  ).join('');
+/* ---- Level 3: an individual lead as its own real, deep-linkable page
+   (/leads/:id) — replaces the previous build's modal-over-the-board.
+   Uses the History API so the browser Back button, a shared link, and
+   a page refresh all land on the same place. See vercel.json/serve.json
+   for the rewrite that makes a direct load of this path work. ---- */
+function openLeadPage(id){
+  pipelineReturnView = { ...pipelineView };
+  currentLeadPageId = id;
+  history.pushState({ leadId: id }, '', '/leads/'+id);
+  renderLeadPage(id);
+}
+async function renderLeadPage(id){
+  // Always refetch — reusing a cache hit here would mean a stage change
+  // or qualification override made from this very page never shows up
+  // after refreshPipeline() re-renders it, since the (stale) lead would
+  // already be "found" in allLeadsCache and never re-fetched.
+  allLeadsCache = await LeadsDB.getAll();
+  const l = findLeadById(id);
+  document.getElementById('pipelineListView').classList.add('hidden');
+  const pageArea = document.getElementById('pipelineLeadPage');
+  pageArea.classList.remove('hidden');
+  if(!l){
+    pageArea.innerHTML = `<div class="lead-page-header"><button class="btn btn-sm" onclick="closeLeadPage()">← Back</button></div><p class="muted">Lead not found — it may have been deleted.</p>`;
+    return;
+  }
+  pageArea.innerHTML = `
+    <div class="lead-page-header">
+      <button class="btn btn-sm" onclick="closeLeadPage()">← Back</button>
+      <h1 class="page-title" style="margin:0;">${escapeHtml(l.business_name)}${l.contact_name ? ' — '+escapeHtml(l.contact_name) : ''}</h1>
+    </div>
+    ${leadDetailModalHtml(l)}`;
+}
+function closeLeadPage(){
+  history.back(); // triggers the popstate handler below, which restores pipelineReturnView
+}
+window.addEventListener('popstate', ()=>{
+  const m = location.pathname.match(/^\/leads\/([^/]+)\/?$/);
+  if(m){
+    currentLeadPageId = m[1];
+    renderLeadPage(m[1]);
+  } else {
+    currentLeadPageId = null;
+    pipelineView = { ...pipelineReturnView };
+    document.getElementById('pipelineLeadPage').classList.add('hidden');
+    document.getElementById('pipelineListView').classList.remove('hidden');
+    switchTab('pipeline');
+    renderPipelineList();
+  }
+});
+// Direct load of /leads/:id (a shared link, or a refresh while on one) —
+// render Level 3 straight away; Back in this case has nothing in-app to
+// return to, so it falls back to the stage menu.
+async function initPipelineRouting(){
+  const m = location.pathname.match(/^\/leads\/([^/]+)\/?$/);
+  if(m){
+    currentLeadPageId = m[1];
+    pipelineReturnView = { level: 1, stage: null };
+    await renderLeadPage(m[1]);
+  }
 }
 function qualificationBadgeHtml(l){
   if(l.qualified === true){
@@ -1862,11 +1936,6 @@ function leadDetailModalHtml(l){
       <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="closeModal();openDeleteLeadModal('${l.id}')">✕</button>
     </div>`;
 }
-function openLeadDetailModal(id){
-  const l = findLeadById(id);
-  if(!l) return;
-  openModal(`${l.business_name} — ${l.contact_name||''}`, leadDetailModalHtml(l), `<button class="btn" onclick="closeModal()">Close</button>`);
-}
 function findLeadById(id){ return allLeadsCache.find(l=>l.id===id); }
 
 /* ===================== LEAD DELETE (manual + bulk) ===================== */
@@ -2015,7 +2084,11 @@ async function ensureFollowupForLead(leadId, type){
 }
 async function refreshPipeline(){
   await renderStatCards();
-  await renderBoard();
+  // If a lead's own full page is open (Level 3), refresh it in place —
+  // e.g. after a stage change or qualification override triggered from
+  // that same page — rather than snapping back to the stage menu.
+  if(currentLeadPageId) await renderLeadPage(currentLeadPageId);
+  else await renderPipelineList();
 }
 
 /* ===================== PIPELINE: ACTIONS ===================== */
@@ -2463,6 +2536,7 @@ async function init(){
   populateFilterOptions();
   await seedIfEmpty();
   await refreshPipeline();
+  await initPipelineRouting();
   await renderInboxHistory();
   await renderRescheduleFlags();
   await renderFollowupTable();
