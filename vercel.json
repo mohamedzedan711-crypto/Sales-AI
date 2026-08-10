@@ -1,5 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/leads/(.*)", "destination": "/index.html" }
-  ]
-}

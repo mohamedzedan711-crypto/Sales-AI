@@ -244,20 +244,24 @@ tr:hover td{background:var(--bg-secondary);}
 .chat-input-row input[type=text]{flex:1;}
 .chat-upload-btn{cursor:pointer;font-size:17px;padding:6px;}
 
-/* ===== STAGE DRILL-DOWN NAVIGATION (Drill-Down Stage Navigation) ===== */
+/* ===== SIDEBAR NAVIGATION + CARD GRID ===== */
 .pipeline-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
-.stage-menu-list{display:flex;flex-direction:column;gap:8px;}
-.stage-menu-row{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
-.stage-menu-row:hover{border-color:var(--pink);box-shadow:var(--shadow);}
-.stage-menu-name{font-weight:700;font-size:14px;color:var(--navy);}
 .stage-count-badge{background:var(--stage-header-bg);color:var(--stage-header-text);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;flex-shrink:0;}
-.pipeline-breadcrumb{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
-.breadcrumb-back{cursor:pointer;font-weight:700;font-size:13px;color:var(--pink);white-space:nowrap;}
-.breadcrumb-back:hover{text-decoration:underline;}
-.breadcrumb-current{font-weight:700;font-size:14px;color:var(--navy);}
-.stage-lead-list{display:flex;flex-direction:column;gap:10px;}
-.list-empty-note{color:var(--text-muted);font-size:13px;text-align:center;padding:30px 4px;}
-.lead-page-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+.list-empty-note{color:var(--text-muted);font-size:13px;text-align:center;padding:30px 4px;grid-column:1/-1;}
+.stage-switcher-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-family:inherit;}
+.stage-switcher-btn:hover{border-color:var(--pink);color:var(--pink);}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(15,15,26,.55);z-index:1000;display:flex;animation:fadeIn .15s ease;}
+.stage-sidebar{background:var(--card-bg);width:300px;max-width:85vw;height:100%;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;animation:slideInLeft .18s ease;}
+@keyframes slideInLeft{from{transform:translateX(-100%);}to{transform:translateX(0);}}
+.stage-sidebar-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-weight:800;color:var(--navy);font-size:15px;}
+.stage-sidebar-body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;}
+.stage-sidebar-row{padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;transition:background .15s ease;}
+.stage-sidebar-row:hover{background:var(--bg-secondary);}
+.stage-sidebar-row.active{background:var(--pink-light);}
+.stage-sidebar-row.active .stage-sidebar-name{color:var(--pink);}
+.stage-sidebar-name{font-weight:700;font-size:13.5px;color:var(--navy);}
+.lead-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+@media(max-width:640px){ .lead-grid{grid-template-columns:1fr;} }
 .lead-card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
 .lead-card:hover{border-color:var(--pink);box-shadow:var(--shadow);}
 .lead-card-biz{font-weight:700;font-size:13.5px;color:var(--navy);margin-bottom:2px;}
@@ -376,13 +380,14 @@ tr:hover td{background:var(--bg-secondary);}
 
 <!-- ============ TAB 1: PIPELINE ============ -->
 <section class="tab-content active" id="tab-pipeline">
-  <div id="pipelineListView">
-    <h1 class="page-title">Sales Pipeline</h1>
-    <p class="page-sub">Every lead from first contact to signed contract.</p>
+  <h1 class="page-title">Sales Pipeline</h1>
+  <p class="page-sub">Every lead from first contact to signed contract.</p>
 
-    <div class="stat-grid" id="statGrid"></div>
+  <div class="stat-grid" id="statGrid"></div>
 
-    <div class="pipeline-toolbar">
+  <div class="pipeline-toolbar">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
+      <button class="stage-switcher-btn" onclick="openSidebar()">☰ <span id="currentStageLabel">New Lead</span></button>
       <div class="filter-bar" style="margin-bottom:0;">
         <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderPipelineList()">
         <select id="filterSource" onchange="renderPipelineList()"><option value="">All Sources</option></select>
@@ -390,16 +395,14 @@ tr:hover td{background:var(--bg-secondary);}
         <select id="filterQualification" onchange="renderPipelineList()"><option value="">All Qualification</option></select>
         <label class="cold-toggle-row"><input type="checkbox" id="filterColdOnly" onchange="renderPipelineList()"> 🔥 Cold only</label>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
-        <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
-      </div>
     </div>
-
-    <div id="pipelineListArea"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+      <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
+    </div>
   </div>
 
-  <div id="pipelineLeadPage" class="hidden"></div>
+  <div id="pipelineListArea"></div>
 
 </section>
 
@@ -610,6 +613,7 @@ tr:hover td{background:var(--bg-secondary);}
 </main>
 
 <div id="modalRoot"></div>
+<div id="sidebarRoot"></div>
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -1416,6 +1420,11 @@ function openModal(title, bodyHtml, footerHtml){
     </div>`;
 }
 function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+document.addEventListener('keydown', (e)=>{
+  if(e.key!=='Escape') return;
+  if(document.getElementById('modalRoot').innerHTML.trim()) closeModal();
+  else if(document.getElementById('sidebarRoot').innerHTML.trim()) closeSidebar();
+});
 function updateModalFooter(html){ const f=document.getElementById('modalFooter'); if(f) f.innerHTML=html; }
 function updateModalBody(html){ const b=document.getElementById('modalBody'); if(b) b.innerHTML=html; }
 function copyTextareaContent(id){
@@ -1612,7 +1621,7 @@ function sourcePillHtml(l){
 function leadCardHtml(l){
   const t = todayISO();
   const cold = isLeadCold(l, t);
-  return `<div class="lead-card" onclick="openLeadPage('${l.id}')">
+  return `<div class="lead-card" onclick="openLeadDetailModal('${l.id}')">
     <div class="lead-card-biz">${escapeHtml(l.business_name)}${l.duplicate_flag ? `<span class="dup-flag-badge" title="Possible duplicate — click to review" onclick="event.stopPropagation();showDuplicateFlagInfo('${l.id}')">⚠ duplicate</span>` : ''}</div>
     <div class="lead-card-contact">${escapeHtml(l.contact_name||'')}${l.email ? ' · '+escapeHtml(l.email) : ''}</div>
     <div class="lead-card-row">
@@ -1627,17 +1636,11 @@ function leadCardHtml(l){
   </div>`;
 }
 
-/* ---- Level 1/2: stage menu <-> lead list within a stage ---- */
-// pipelineView.level: 1 = stage menu (default), 2 = leads within a stage.
-// Purely in-memory — no URL change, mirroring how tab-switching itself
-// works in this app. Only Level 3 (an individual lead) is a real route;
-// see openLeadPage()/renderLeadPage() below.
-let pipelineView = { level: 1, stage: null };
-// Snapshot of pipelineView taken the moment a lead page is opened, so
-// Back from Level 3 restores exactly which stage/filters the person
-// came from instead of dumping them back to the stage menu.
-let pipelineReturnView = { level: 1, stage: null };
-let currentLeadPageId = null; // set while the /leads/:id full page is showing
+/* ---- Sidebar stage switcher + 2-column card grid ---- */
+// Which stage's cards the grid is currently showing. Defaults to 'New
+// Lead' — there's no separate "stage menu" page anymore; the sidebar
+// (below) is the only way to change this.
+let selectedStage = 'New Lead';
 
 function getFilteredLeads(){
   const search = document.getElementById('leadSearch').value.toLowerCase();
@@ -1657,14 +1660,24 @@ function getFilteredLeads(){
 }
 async function renderPipelineList(){
   allLeadsCache = await LeadsDB.getAll();
-  const leads = getFilteredLeads();
-  if(pipelineView.level===2) renderStageLeadList(pipelineView.stage, leads);
-  else renderStageMenu(leads);
+  renderLeadGrid(getFilteredLeads());
 }
-function renderStageMenu(leads){
+function renderLeadGrid(leads){
+  document.getElementById('currentStageLabel').textContent = selectedStage;
+  const stageLeads = leads.filter(l=>(l.stage||'(no stage)')===selectedStage);
+  const cards = stageLeads.length ? stageLeads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this stage match your filters.</div>`;
+  document.getElementById('pipelineListArea').innerHTML = `<div class="lead-grid">${cards}</div>`;
+}
+// Sidebar is a slide-in overlay (built fresh each time it opens, so its
+// counts are always current) rather than a persistent column — closing
+// it never touches selectedStage/the grid underneath, so anything
+// already showing stays exactly as it was unless a different stage is
+// actually clicked.
+function openSidebar(){
+  const leads = getFilteredLeads();
   // Any lead whose stage isn't one of the 9 known stages (stale data, a
   // direct DB edit, etc.) still gets a row rather than silently
-  // vanishing from the menu.
+  // vanishing from the sidebar.
   const known = new Set(STAGES);
   const extraStages = [...new Set(leads.filter(l=>!known.has(l.stage)).map(l=>l.stage||'(no stage)'))];
   const allStages = [...STAGES, ...extraStages];
@@ -1672,95 +1685,40 @@ function renderStageMenu(leads){
     const count = leads.filter(l=>(l.stage||'(no stage)')===stage).length;
     // Single-quoted JS string literal inside a double-quoted HTML
     // attribute — NOT JSON.stringify(), which emits double quotes and
-    // would terminate the onclick="..." attribute early (exactly the
-    // bug this line used to have: the browser silently dropped the
-    // whole handler because the resulting markup was malformed, so
-    // clicking a row did nothing at all).
-    return `<div class="stage-menu-row" onclick="openStage('${String(stage).replace(/'/g, "\\'")}')">
-      <span class="stage-menu-name">${escapeHtml(stage)}</span>
+    // would terminate the onclick="..." attribute early and silently
+    // drop the whole handler (this exact bug bit the previous stage
+    // menu implementation).
+    const safeStage = String(stage).replace(/'/g, "\\'");
+    return `<div class="stage-sidebar-row${stage===selectedStage?' active':''}" onclick="selectStage('${safeStage}')">
+      <span class="stage-sidebar-name">${escapeHtml(stage)}</span>
       <span class="stage-count-badge">${count}</span>
     </div>`;
   }).join('');
-  document.getElementById('pipelineListArea').innerHTML = `<div class="stage-menu-list">${rows}</div>`;
+  document.getElementById('sidebarRoot').innerHTML = `
+    <div class="sidebar-overlay" id="stageSidebarOverlay" onclick="if(event.target.id==='stageSidebarOverlay') closeSidebar()">
+      <div class="stage-sidebar">
+        <div class="stage-sidebar-header"><span>Stages</span><button class="modal-close" onclick="closeSidebar()">&times;</button></div>
+        <div class="stage-sidebar-body">${rows}</div>
+      </div>
+    </div>`;
 }
-function openStage(stage){
-  pipelineView = { level: 2, stage };
+function closeSidebar(){
+  document.getElementById('sidebarRoot').innerHTML = '';
+}
+function selectStage(stage){
+  selectedStage = stage;
+  closeSidebar();
   renderPipelineList();
-}
-function backToStageMenu(){
-  pipelineView = { level: 1, stage: null };
-  renderPipelineList();
-}
-function renderStageLeadList(stage, leads){
-  const stageLeads = leads.filter(l=>(l.stage||'(no stage)')===stage);
-  const cards = stageLeads.length ? stageLeads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this stage match your filters.</div>`;
-  document.getElementById('pipelineListArea').innerHTML = `
-    <div class="pipeline-breadcrumb">
-      <span class="breadcrumb-back" onclick="backToStageMenu()">☰ Back to Stages</span>
-      <span class="breadcrumb-current">${escapeHtml(stage)} (${stageLeads.length})</span>
-    </div>
-    <div class="stage-lead-list">${cards}</div>`;
 }
 
-/* ---- Level 3: an individual lead as its own real, deep-linkable page
-   (/leads/:id) — replaces the previous build's modal-over-the-board.
-   Uses the History API so the browser Back button, a shared link, and
-   a page refresh all land on the same place. See vercel.json/serve.json
-   for the rewrite that makes a direct load of this path work. ---- */
-function openLeadPage(id){
-  pipelineReturnView = { ...pipelineView };
-  currentLeadPageId = id;
-  history.pushState({ leadId: id }, '', '/leads/'+id);
-  renderLeadPage(id);
-}
-async function renderLeadPage(id){
-  // Always refetch — reusing a cache hit here would mean a stage change
-  // or qualification override made from this very page never shows up
-  // after refreshPipeline() re-renders it, since the (stale) lead would
-  // already be "found" in allLeadsCache and never re-fetched.
-  allLeadsCache = await LeadsDB.getAll();
+/* ---- Lead detail: a modal on top of the grid, not a page navigation.
+   Closing it (X, clicking outside, or Escape — see the keydown listener
+   near closeModal()) leaves selectedStage/the grid untouched, so the
+   person lands back exactly where they were. ---- */
+function openLeadDetailModal(id){
   const l = findLeadById(id);
-  document.getElementById('pipelineListView').classList.add('hidden');
-  const pageArea = document.getElementById('pipelineLeadPage');
-  pageArea.classList.remove('hidden');
-  if(!l){
-    pageArea.innerHTML = `<div class="lead-page-header"><button class="btn btn-sm" onclick="closeLeadPage()">← Back</button></div><p class="muted">Lead not found — it may have been deleted.</p>`;
-    return;
-  }
-  pageArea.innerHTML = `
-    <div class="lead-page-header">
-      <button class="btn btn-sm" onclick="closeLeadPage()">← Back</button>
-      <h1 class="page-title" style="margin:0;">${escapeHtml(l.business_name)}${l.contact_name ? ' — '+escapeHtml(l.contact_name) : ''}</h1>
-    </div>
-    ${leadDetailModalHtml(l)}`;
-}
-function closeLeadPage(){
-  history.back(); // triggers the popstate handler below, which restores pipelineReturnView
-}
-window.addEventListener('popstate', ()=>{
-  const m = location.pathname.match(/^\/leads\/([^/]+)\/?$/);
-  if(m){
-    currentLeadPageId = m[1];
-    renderLeadPage(m[1]);
-  } else {
-    currentLeadPageId = null;
-    pipelineView = { ...pipelineReturnView };
-    document.getElementById('pipelineLeadPage').classList.add('hidden');
-    document.getElementById('pipelineListView').classList.remove('hidden');
-    switchTab('pipeline');
-    renderPipelineList();
-  }
-});
-// Direct load of /leads/:id (a shared link, or a refresh while on one) —
-// render Level 3 straight away; Back in this case has nothing in-app to
-// return to, so it falls back to the stage menu.
-async function initPipelineRouting(){
-  const m = location.pathname.match(/^\/leads\/([^/]+)\/?$/);
-  if(m){
-    currentLeadPageId = m[1];
-    pipelineReturnView = { level: 1, stage: null };
-    await renderLeadPage(m[1]);
-  }
+  if(!l) return;
+  openModal(`${l.business_name} — ${l.contact_name||''}`, leadDetailModalHtml(l), `<button class="btn" onclick="closeModal()">Close</button>`);
 }
 function qualificationBadgeHtml(l){
   if(l.qualified === true){
@@ -2090,11 +2048,7 @@ async function ensureFollowupForLead(leadId, type){
 }
 async function refreshPipeline(){
   await renderStatCards();
-  // If a lead's own full page is open (Level 3), refresh it in place —
-  // e.g. after a stage change or qualification override triggered from
-  // that same page — rather than snapping back to the stage menu.
-  if(currentLeadPageId) await renderLeadPage(currentLeadPageId);
-  else await renderPipelineList();
+  await renderPipelineList();
 }
 
 /* ===================== PIPELINE: ACTIONS ===================== */
@@ -2542,7 +2496,6 @@ async function init(){
   populateFilterOptions();
   await seedIfEmpty();
   await refreshPipeline();
-  await initPipelineRouting();
   await renderInboxHistory();
   await renderRescheduleFlags();
   await renderFollowupTable();
