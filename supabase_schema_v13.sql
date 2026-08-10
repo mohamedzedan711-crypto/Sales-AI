@@ -1,0 +1,31 @@
+-- ============================================================
+-- Social Practice AI — Schema v13
+-- Lead Board Redesign: renames the lead-stage taxonomy to match the new
+-- Kanban board's 9 columns (New Lead, Contacted, Discovery Booked,
+-- Discovery Done, Proposal Sent, Agreement Sent, Nurturing, Closed Won,
+-- Closed Lost).
+--
+-- Only two stage strings actually change meaning: 'Signed' -> 'Closed
+-- Won' and 'Lost' -> 'Closed Lost'. Every other existing stage string
+-- ('New Lead', 'Nurturing', 'Discovery Booked', 'Discovery Done',
+-- 'Proposal Sent', 'Agreement Sent') is unchanged. 'Contacted' is a new
+-- column with no existing analog — it starts empty and is only reached
+-- by manually dragging a card into it; no migration needed for it.
+-- 'Discovery Done' has no equivalent in the board spec's 8 named columns
+-- but is kept as a 9th column rather than silently folding those leads
+-- into 'Discovery Booked' or dropping them from the board.
+--
+-- leads.stage has no CHECK constraint (never has, across every prior
+-- schema file) — this is a plain data migration, not a constraint
+-- change. index.html's STAGES array is the only place the 9-value list
+-- is enforced, alongside the HubSpot dealstage map in
+-- mapStageToPipeline()/reverseMapPipelineStage() (also updated in this
+-- pass) and the 'Signed' check inside changeLeadStage() (now checks
+-- 'Closed Won').
+--
+-- Safe to re-run: both UPDATEs are idempotent (re-running against
+-- already-migrated rows matches zero rows the second time).
+-- ============================================================
+
+update leads set stage = 'Closed Won' where stage = 'Signed';
+update leads set stage = 'Closed Lost' where stage = 'Lost';

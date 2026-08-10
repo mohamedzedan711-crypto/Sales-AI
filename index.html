@@ -11,8 +11,8 @@
 <style>
 :root{
   --navy:#1a1a2e;
-  --pink:#e91e8c;
-  --pink-light:#fdeef6;
+  --pink:#5C86A3;
+  --pink-light:#EAF1F6;
   --bg:#ffffff;
   --bg-secondary:#f7f7fb;
   --bg-tertiary:#f0f0f7;
@@ -23,20 +23,30 @@
   --shadow:0 2px 10px rgba(26,26,46,0.06);
   --shadow-lg:0 8px 30px rgba(26,26,46,0.14);
   --radius:12px;
+  --stage-header-bg:#3E5A70;
+  --stage-header-text:#ffffff;
 }
+/* Social Practice brand redesign — --pink/--pink-light keep their old
+   names (touching every consumer's variable name would be a much larger
+   diff for no functional gain) but now hold the brand's Slate Blue
+   accent, not an actual pink. Dark mode carries the brand's Charcoal /
+   Deep Slate palette; light mode keeps its neutral background but picks
+   up the same blue accent for consistency. */
 [data-theme="dark"]{
   --navy:#f0f0f5;
-  --pink:#ff4fa8;
-  --pink-light:#2a1a28;
-  --bg:#0f0f1a;
-  --bg-secondary:#16162a;
-  --bg-tertiary:#1e1e36;
+  --pink:#8BAFC9;
+  --pink-light:#22313B;
+  --bg:#1A1A1A;
+  --bg-secondary:#242424;
+  --bg-tertiary:#2C2C2C;
   --text:#f0f0f5;
-  --text-muted:#9797b0;
-  --border:#2a2a45;
-  --card-bg:#16162a;
+  --text-muted:#9CA9B2;
+  --border:#33424D;
+  --card-bg:#212121;
   --shadow:0 2px 10px rgba(0,0,0,0.4);
   --shadow-lg:0 8px 30px rgba(0,0,0,0.55);
+  --stage-header-bg:#3E5A70;
+  --stage-header-text:#ffffff;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -234,16 +244,33 @@ tr:hover td{background:var(--bg-secondary);}
 .chat-input-row input[type=text]{flex:1;}
 .chat-upload-btn{cursor:pointer;font-size:17px;padding:6px;}
 
-/* stage colors */
-.stage-select{border:none;font-weight:700;font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;appearance:none;text-align:center;}
-.stage-New\ Lead{background:#e5eaf5;color:#3a5bb8;}
-.stage-Nurturing{background:#f0e5f9;color:#7c3fc7;}
-.stage-Discovery\ Booked{background:#e0f4f4;color:#0e8a8a;}
-.stage-Discovery\ Done{background:#dceafd;color:#1f6fd6;}
-.stage-Proposal\ Sent{background:#fdf1d9;color:#c47f16;}
-.stage-Agreement\ Sent{background:#fde3f1;color:#c21e83;}
-.stage-Signed{background:#dcf7e6;color:#1a9e5c;}
-.stage-Lost{background:#f5dcdc;color:#c0334a;}
+/* ===== KANBAN BOARD (Lead Board Redesign) ===== */
+.board-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.board-wrap{display:flex;gap:14px;overflow-x:auto;padding-bottom:10px;align-items:flex-start;}
+.board-column{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);width:280px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 320px);min-height:220px;transition:border-color .15s ease;}
+.board-column.drag-over{border-color:var(--pink);}
+.board-column-header{background:var(--stage-header-bg);color:var(--stage-header-text);padding:12px 14px;border-radius:var(--radius) var(--radius) 0 0;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-shrink:0;}
+.board-column-title{font-size:12.5px;font-weight:700;letter-spacing:.2px;}
+.board-column-count{background:rgba(255,255,255,.22);border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700;}
+.board-column-body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;}
+.board-column-empty{color:var(--text-muted);font-size:12px;text-align:center;padding:16px 4px;}
+.lead-card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
+.lead-card:hover{border-color:var(--pink);box-shadow:var(--shadow);}
+.lead-card.dragging{opacity:.4;}
+.lead-card-biz{font-weight:700;font-size:13.5px;color:var(--navy);margin-bottom:2px;}
+.lead-card-contact{font-size:12px;color:var(--text-muted);margin-bottom:2px;}
+.lead-card-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:9px;flex-wrap:wrap;}
+.lead-card-value{font-size:12.5px;font-weight:700;color:var(--navy);}
+.lead-card-followup{font-size:11.5px;color:var(--text-muted);}
+.qual-badge{padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
+.qual-badge.qual-qualified{background:#dcf7e6;color:#1a9e5c;}
+.qual-badge.qual-needs_review{background:#fdf1d9;color:#c47f16;}
+.qual-badge.qual-not_yet{background:var(--bg-tertiary);color:var(--text-muted);}
+.qual-override-mark{font-size:10px;cursor:help;}
+.source-pill{background:var(--pink-light);color:var(--pink);padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.cold-tag{background:#fce3e6;color:#a3213a;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;display:inline-block;margin-top:9px;}
+[data-theme="dark"] .cold-tag{background:#3a1420;color:#ff8fa3;}
+.cold-toggle-row{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;user-select:none;white-space:nowrap;}
 
 /* proposal formatted view */
 .proposal-view{font-size:14px;line-height:1.7;}
@@ -351,45 +378,21 @@ tr:hover td{background:var(--bg-secondary);}
 
   <div class="stat-grid" id="statGrid"></div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Active Leads</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
-        <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
-      </div>
+  <div class="board-toolbar">
+    <div class="filter-bar" style="margin-bottom:0;">
+      <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderBoard()">
+      <select id="filterSource" onchange="renderBoard()"><option value="">All Sources</option></select>
+      <select id="filterPractice" onchange="renderBoard()"><option value="">All Practice Types</option></select>
+      <select id="filterQualification" onchange="renderBoard()"><option value="">All Qualification</option></select>
+      <label class="cold-toggle-row"><input type="checkbox" id="filterColdOnly" onchange="renderBoard()"> 🔥 Cold only</label>
     </div>
-    <div class="filter-bar">
-      <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderLeadsTable()">
-      <select id="filterStage" onchange="renderLeadsTable()"><option value="">All Stages</option></select>
-      <select id="filterSource" onchange="renderLeadsTable()"><option value="">All Sources</option></select>
-      <select id="filterPractice" onchange="renderLeadsTable()"><option value="">All Practice Types</option></select>
-    </div>
-    <div id="bulkDeleteBar" class="hidden" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-      <span id="bulkDeleteCount" style="font-weight:700;color:#c0334a;font-size:13.5px;"></span>
-      <button class="btn btn-danger btn-sm" onclick="openBulkDeleteModal()">Delete Selected</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th><input type="checkbox" id="selectAllLeads" onchange="toggleSelectAllLeads(this.checked)"></th>
-          <th>Business</th><th>Contact</th><th>Stage</th><th>Qualification</th><th>Value</th><th>Next Follow-Up</th>
-        </tr></thead>
-        <tbody id="leadsTableBody"></tbody>
-      </table>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+      <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header"><div class="card-title">Cold Leads — No Contact in 14+ Days</div></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Business</th><th>Contact</th><th>Stage</th><th>Last Contact</th><th>Days Cold</th><th>Actions</th></tr></thead>
-        <tbody id="coldLeadsBody"></tbody>
-      </table>
-      <div id="coldLeadsEmpty" class="chat-empty hidden">No cold leads right now — nice work staying on top of things.</div>
-    </div>
-  </div>
+  <div class="board-wrap" id="boardWrap"></div>
 
 </section>
 
@@ -582,6 +585,17 @@ tr:hover td{background:var(--bg-secondary);}
           <table class="conn-table" id="connStatusTable"></table>
         </div>
       </div>
+
+      <div class="card settings-accordion-item" id="acc-item-cleanup">
+        <div class="settings-accordion-header" onclick="toggleSettingsAccordion('cleanup')">
+          <div class="settings-section-title">🧹 Data Cleanup</div>
+          <span class="accordion-chevron">▸</span>
+        </div>
+        <div class="settings-accordion-body hidden" id="acc-body-cleanup">
+          <p class="muted" style="font-size:12.5px;margin-bottom:14px;">Scans for known test/sample leads (HubSpot's default demo contacts, anything with "test" in the name, and a couple of known dev-testing entries). This only ever identifies candidates — nothing is deleted until you review the list and check off the ones you actually want removed.</p>
+          <button class="btn" onclick="scanForFakeLeads()">Scan for Test/Sample Leads</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -593,13 +607,18 @@ tr:hover td{background:var(--bg-secondary);}
 
 <script>
 /* ===================== CONSTANTS ===================== */
-const STAGES = ["New Lead","Nurturing","Discovery Booked","Discovery Done","Proposal Sent","Agreement Sent","Signed","Lost"];
-const SOURCES = ["HubSpot","Referral","Website","Cold Outreach","Other"];
+// Board column order, left to right. 'Discovery Done' isn't one of the
+// redesign's 8 named columns but is kept as a 9th so leads already
+// sitting there don't get silently folded into 'Discovery Booked' or
+// dropped from the board (see supabase_schema_v13.sql).
+const STAGES = ["New Lead","Contacted","Discovery Booked","Discovery Done","Proposal Sent","Agreement Sent","Nurturing","Closed Won","Closed Lost"];
+const SOURCES = ["HubSpot","Referral","Website","Cold Outreach","Other","Prospero"];
 const PRACTICE_TYPES = ["Med Spa","Plastic Surgery","Dental","Other"];
+const QUALIFICATION_STATUSES = ["qualified","not_yet","needs_review"];
+const QUALIFICATION_STATUS_LABELS = { qualified:"Qualified", not_yet:"Not Yet", needs_review:"Needs Review" };
 
 let supabaseClient = null;
 let CONFIG = { supabase: { enabled: false } };
-let expandedLeadId = null;
 let currentProposalLeadId = null;
 
 /* ===================== UTIL ===================== */
@@ -878,16 +897,23 @@ const HUBSPOT = {
 };
 
 // MAP YOUR STAGES TO HUBSPOT PIPELINE STAGES
+// HubSpot's default deal pipeline has no stage earlier than
+// 'appointmentscheduled' — 'New Lead' and 'Contacted' both map to it,
+// same pre-existing lossiness as 'New Lead'/'Discovery Booked' before
+// this redesign (reverseMapPipelineStage below always resolves that
+// collision to 'Discovery Booked', never round-tripping back to
+// 'New Lead'/'Contacted' — unchanged behavior, not new).
 function mapStageToPipeline(stage){
   const map = {
     'New Lead': 'appointmentscheduled',
-    'Nurturing': 'qualifiedtobuy',
+    'Contacted': 'appointmentscheduled',
     'Discovery Booked': 'appointmentscheduled',
     'Discovery Done': 'presentationscheduled',
     'Proposal Sent': 'decisionmakerboughtin',
     'Agreement Sent': 'contractsent',
-    'Signed': 'closedwon',
-    'Lost': 'closedlost'
+    'Nurturing': 'qualifiedtobuy',
+    'Closed Won': 'closedwon',
+    'Closed Lost': 'closedlost'
   };
   return map[stage] || 'appointmentscheduled';
 }
@@ -900,8 +926,8 @@ function reverseMapPipelineStage(hsStage){
     'presentationscheduled': 'Discovery Done',
     'decisionmakerboughtin': 'Proposal Sent',
     'contractsent': 'Agreement Sent',
-    'closedwon': 'Signed',
-    'closedlost': 'Lost'
+    'closedwon': 'Closed Won',
+    'closedlost': 'Closed Lost'
   };
   return map[hsStage] || null;
 }
@@ -1454,8 +1480,10 @@ function toggleTheme(){
   localStorage.setItem('theme', next);
 }
 function initTheme(){
+  // Dark is the baseline brand experience now — only an explicit prior
+  // choice of light mode (saved by toggleTheme()) opts back out of it.
   const saved = localStorage.getItem('theme');
-  if(saved==='dark'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('themeToggle').textContent='☀️'; }
+  if(saved!=='light'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('themeToggle').textContent='☀️'; }
 }
 function updateLiveDate(){
   document.getElementById('liveDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -1520,11 +1548,11 @@ async function renderStatCards(){
   const leads = await LeadsDB.getAll();
   const t = todayISO();
   const weekStart = addDays(t, -((new Date(t+'T00:00:00').getDay()+6)%7));
-  const active = leads.filter(l=>!['Signed','Lost'].includes(l.stage)).length;
+  const active = leads.filter(l=>!['Closed Won','Closed Lost'].includes(l.stage)).length;
   const discoveryThisWeek = leads.filter(l=> l.discovery_call_date && l.discovery_call_date >= weekStart).length;
-  const proposalsSent = leads.filter(l=>['Proposal Sent','Agreement Sent','Signed'].includes(l.stage)).length;
-  const signedThisWeek = leads.filter(l=> l.stage==='Signed' && l.signed_date && l.signed_date >= weekStart).length;
-  const pipelineRevenue = leads.filter(l=>!['Lost'].includes(l.stage)).reduce((s,l)=>s+(Number(l.proposal_value)||0),0);
+  const proposalsSent = leads.filter(l=>['Proposal Sent','Agreement Sent','Closed Won'].includes(l.stage)).length;
+  const signedThisWeek = leads.filter(l=> l.stage==='Closed Won' && l.signed_date && l.signed_date >= weekStart).length;
+  const pipelineRevenue = leads.filter(l=>!['Closed Lost'].includes(l.stage)).reduce((s,l)=>s+(Number(l.proposal_value)||0),0);
 
   const cards = [
     ["Total Active Leads", active, false],
@@ -1538,57 +1566,121 @@ async function renderStatCards(){
   `).join('');
 }
 
-/* ===================== PIPELINE: TABLE ===================== */
+/* ===================== PIPELINE: BOARD ===================== */
 function populateFilterOptions(){
-  const stageSel = document.getElementById('filterStage');
   const sourceSel = document.getElementById('filterSource');
   const practiceSel = document.getElementById('filterPractice');
-  STAGES.forEach(s=>stageSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+  const qualSel = document.getElementById('filterQualification');
   SOURCES.forEach(s=>sourceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
   PRACTICE_TYPES.forEach(s=>practiceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+  QUALIFICATION_STATUSES.forEach(s=>qualSel.insertAdjacentHTML('beforeend', `<option value="${s}">${QUALIFICATION_STATUS_LABELS[s]}</option>`));
 }
 let allLeadsCache = [];
-async function renderLeadsTable(){
+// The override (if set) IS the effective status shown on a card — it's
+// a human decision layered on top of the deterministic qualified/score,
+// never a replacement for it (both stay visible in the detail modal via
+// qualificationOverrideBlockHtml, untouched below). Falls back to the
+// deterministic qualified boolean when no override exists.
+function effectiveQualStatus(l){
+  if(l.qualification_override) return l.qualification_override;
+  if(l.qualified === true) return 'qualified';
+  if(l.qualified === false) return 'not_yet';
+  return null;
+}
+function isLeadCold(l, t){
+  return !['Closed Won','Closed Lost'].includes(l.stage) && daysBetween(l.last_contact||t, t) >= 14;
+}
+function cardQualBadgeHtml(l){
+  const status = effectiveQualStatus(l);
+  if(!status) return '<span class="muted" style="font-size:11px;">Unscored</span>';
+  const overrideMark = l.qualification_override
+    ? `<span class="qual-override-mark" title="Human override — deterministic result was ${l.qualified===true?'Qualified':l.qualified===false?'Not Qualified':'unscored'}${l.qualification_score!=null?' ('+l.qualification_score+')':''}. Reason: ${escapeHtml(l.qualification_override_reason||'none given')}">✏️</span>`
+    : '';
+  return `<span class="qual-badge qual-${status}">${QUALIFICATION_STATUS_LABELS[status]}${overrideMark}</span>`;
+}
+function sourcePillHtml(l){
+  if(!l.source) return '';
+  return `<span class="source-pill">${escapeHtml(l.source)}</span>`;
+}
+function leadCardHtml(l){
+  const t = todayISO();
+  const cold = isLeadCold(l, t);
+  return `<div class="lead-card" draggable="true" ondragstart="handleCardDragStart(event,'${l.id}')" ondragend="handleCardDragEnd(event)" onclick="openLeadDetailModal('${l.id}')">
+    <div class="lead-card-biz">${escapeHtml(l.business_name)}${l.duplicate_flag ? `<span class="dup-flag-badge" title="Possible duplicate — click to review" onclick="event.stopPropagation();showDuplicateFlagInfo('${l.id}')">⚠ duplicate</span>` : ''}</div>
+    <div class="lead-card-contact">${escapeHtml(l.contact_name||'')}${l.email ? ' · '+escapeHtml(l.email) : ''}</div>
+    <div class="lead-card-row">
+      ${cardQualBadgeHtml(l)}
+      ${sourcePillHtml(l)}
+    </div>
+    <div class="lead-card-row">
+      <span class="lead-card-value">${fmtMoney(l.proposal_value)}/mo</span>
+      <span class="lead-card-followup">${l.next_followup ? 'Next: '+fmtDate(l.next_followup) : ''}</span>
+    </div>
+    ${cold ? `<div class="cold-tag">🔥 ${daysBetween(l.last_contact||t,t)}+ days cold</div>` : ''}
+  </div>`;
+}
+function columnHtml(stage, leads){
+  const cards = leads.length ? leads.map(l=>leadCardHtml(l)).join('') : `<div class="board-column-empty">No leads here.</div>`;
+  return `<div class="board-column" id="col-${cssEscape(stage)}" ondragover="handleColumnDragOver(event,'${stage}')" ondragleave="handleColumnDragLeave(event,'${stage}')" ondrop="handleColumnDrop(event,'${stage}')">
+    <div class="board-column-header"><span class="board-column-title">${stage}</span><span class="board-column-count">${leads.length}</span></div>
+    <div class="board-column-body">${cards}</div>
+  </div>`;
+}
+function cssEscape(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'-'); }
+let draggingLeadId = null;
+function handleCardDragStart(e, id){
+  draggingLeadId = id;
+  e.dataTransfer.setData('text/plain', id);
+  e.target.classList.add('dragging');
+}
+function handleCardDragEnd(e){
+  draggingLeadId = null;
+  e.target.classList.remove('dragging');
+}
+function handleColumnDragOver(e, stage){
+  e.preventDefault();
+  document.getElementById('col-'+cssEscape(stage))?.classList.add('drag-over');
+}
+function handleColumnDragLeave(e, stage){
+  document.getElementById('col-'+cssEscape(stage))?.classList.remove('drag-over');
+}
+async function handleColumnDrop(e, stage){
+  e.preventDefault();
+  document.getElementById('col-'+cssEscape(stage))?.classList.remove('drag-over');
+  const id = e.dataTransfer.getData('text/plain') || draggingLeadId;
+  if(!id) return;
+  const lead = findLeadById(id);
+  if(lead && lead.stage===stage) return;
+  await changeLeadStage(id, stage);
+}
+async function renderBoard(){
   allLeadsCache = await LeadsDB.getAll();
   const search = document.getElementById('leadSearch').value.toLowerCase();
-  const fStage = document.getElementById('filterStage').value;
   const fSource = document.getElementById('filterSource').value;
   const fPractice = document.getElementById('filterPractice').value;
+  const fQual = document.getElementById('filterQualification').value;
+  const coldOnly = document.getElementById('filterColdOnly').checked;
+  const t = todayISO();
 
-  let leads = allLeadsCache.filter(l=>{
+  const leads = allLeadsCache.filter(l=>{
     if(search && !(`${l.business_name} ${l.contact_name}`.toLowerCase().includes(search))) return false;
-    if(fStage && l.stage!==fStage) return false;
     if(fSource && l.source!==fSource) return false;
     if(fPractice && l.practice_type!==fPractice) return false;
+    if(fQual && effectiveQualStatus(l)!==fQual) return false;
+    if(coldOnly && !isLeadCold(l, t)) return false;
     return true;
   });
 
-  const t = todayISO();
-  const activeLeads = leads.filter(l=> !( !['Signed','Lost'].includes(l.stage) === false ) );
-  const warmLeads = leads.filter(l=> ['Signed','Lost'].includes(l.stage) || daysBetween(l.last_contact||t, t) < 14 );
-  const coldLeads = allLeadsCache.filter(l=> !['Signed','Lost'].includes(l.stage) && daysBetween(l.last_contact||t, t) >= 14 );
+  // Any lead whose stage isn't one of the 9 known columns (stale data,
+  // a direct DB edit, etc.) still gets a column rather than silently
+  // vanishing from the board.
+  const known = new Set(STAGES);
+  const extraStages = [...new Set(leads.filter(l=>!known.has(l.stage)).map(l=>l.stage||'(no stage)'))];
+  const allColumns = [...STAGES, ...extraStages];
 
-  document.getElementById('leadsTableBody').innerHTML = warmLeads.length ? warmLeads.map(l=>leadRowHtml(l)).join('') :
-    `<tr><td colspan="7" class="chat-empty">No leads match your filters.</td></tr>`;
-  updateBulkDeleteBar();
-
-  const coldBody = document.getElementById('coldLeadsBody');
-  const coldEmpty = document.getElementById('coldLeadsEmpty');
-  if(coldLeads.length){
-    coldEmpty.classList.add('hidden');
-    coldBody.innerHTML = coldLeads.map(l=>`
-      <tr class="cold-row">
-        <td class="biz-name">${escapeHtml(l.business_name)}</td>
-        <td>${escapeHtml(l.contact_name)}</td>
-        <td><span class="badge stage-${l.stage.replace(/ /g,'\\ ')}" style="border-radius:20px;">${l.stage}</span></td>
-        <td>${fmtDate(l.last_contact)}</td>
-        <td>${daysBetween(l.last_contact||t,t)} days</td>
-        <td><button class="btn btn-sm btn-pink" onclick="actionReactivate('${l.id}')">Reactivate</button></td>
-      </tr>`).join('');
-  } else {
-    coldBody.innerHTML = '';
-    coldEmpty.classList.remove('hidden');
-  }
+  document.getElementById('boardWrap').innerHTML = allColumns.map(stage=>
+    columnHtml(stage, leads.filter(l=>(l.stage||'(no stage)')===stage))
+  ).join('');
 }
 function qualificationBadgeHtml(l){
   if(l.qualified === true){
@@ -1741,56 +1833,39 @@ async function confirmSendTemplate(leadId, templateId){
     if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
   }
 }
-function toggleLeadExpand(id){
-  expandedLeadId = (expandedLeadId === id) ? null : id;
-  renderLeadsTable();
+// Clicking a card opens this — same meta/qualification-override/action
+// content the old expandable table row showed, just inside a modal
+// instead of a <tr> now that there's no table. Nothing inside
+// qualificationOverrideBlockHtml/openTemplatesModal etc. changed.
+function leadDetailModalHtml(l){
+  return `
+    <div class="lead-detail-meta">
+      <div><strong>Stage:</strong> <select id="detailStageSelect" onchange="changeLeadStage('${l.id}', this.value)" style="width:auto;display:inline-block;">${STAGES.map(s=>`<option value="${s}" ${s===l.stage?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><strong>Source:</strong> ${escapeHtml(l.source||'—')}</div>
+      <div><strong>Practice Type:</strong> ${escapeHtml(l.practice_type||'—')}</div>
+      <div><strong>Location:</strong> ${escapeHtml(l.location||'—')}</div>
+      <div><strong>Value:</strong> ${fmtMoney(l.proposal_value)}/mo</div>
+      <div><strong>Last Contact:</strong> ${fmtDate(l.last_contact)}</div>
+    </div>
+    ${qualificationOverrideBlockHtml(l)}
+    <div class="actions-cell">
+      <button class="btn btn-sm btn-pink" onclick="openTemplatesModal('${l.id}')">📄 Templates</button>
+      <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
+      <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
+      ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
+      ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
+      <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
+      <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
+      <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
+      <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
+      <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
+      <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="closeModal();openDeleteLeadModal('${l.id}')">✕</button>
+    </div>`;
 }
-function leadRowHtml(l){
-  const expanded = expandedLeadId === l.id;
-  const collapsedRow = `<tr class="lead-row-collapsed${expanded?' expanded':''}" onclick="toggleLeadExpand('${l.id}')">
-    <td onclick="event.stopPropagation()"><input type="checkbox" class="lead-select-cb" data-id="${l.id}" onchange="updateBulkDeleteBar()"></td>
-    <td class="biz-name"><span class="lead-expand-chevron">▸</span>${escapeHtml(l.business_name)}${l.duplicate_flag ? `<span class="dup-flag-badge" title="Possible duplicate — click to review" onclick="event.stopPropagation();showDuplicateFlagInfo('${l.id}')">⚠ possible duplicate</span>` : ''}</td>
-    <td>${escapeHtml(l.contact_name)}<br><span class="muted" style="font-size:11.5px;">${escapeHtml(l.email||'')}</span></td>
-    <td onclick="event.stopPropagation()">
-      <select class="stage-select stage-${l.stage.replace(/ /g,'\\ ')}" onchange="changeLeadStage('${l.id}', this.value)">
-        ${STAGES.map(s=>`<option value="${s}" ${s===l.stage?'selected':''}>${s}</option>`).join('')}
-      </select>
-    </td>
-    <td>${qualificationBadgeHtml(l)}</td>
-    <td>${fmtMoney(l.proposal_value)}/mo</td>
-    <td>${fmtDate(l.next_followup)}</td>
-  </tr>`;
-
-  if(!expanded) return collapsedRow;
-
-  const detailRow = `<tr class="lead-detail-row">
-    <td colspan="7">
-      <div class="lead-detail-panel">
-        <div class="lead-detail-meta">
-          <div><strong>Source:</strong> ${escapeHtml(l.source||'—')}</div>
-          <div><strong>Practice Type:</strong> ${escapeHtml(l.practice_type||'—')}</div>
-          <div><strong>Location:</strong> ${escapeHtml(l.location||'—')}</div>
-          <div><strong>Last Contact:</strong> ${fmtDate(l.last_contact)}</div>
-        </div>
-        ${qualificationOverrideBlockHtml(l)}
-        <div class="actions-cell">
-          <button class="btn btn-sm btn-pink" onclick="openTemplatesModal('${l.id}')">📄 Templates</button>
-          <button class="btn btn-sm" onclick="actionNurture('${l.id}')">Nurture</button>
-          <button class="btn btn-sm" onclick="openBookCallModal('${l.id}')">Book Call</button>
-          ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
-          ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
-          <button class="btn btn-sm" onclick="actionRecap('${l.id}')">Recap</button>
-          <button class="btn btn-sm" onclick="actionFollowUp('${l.id}')">Follow Up</button>
-          <button class="btn btn-sm" onclick="actionReactivate('${l.id}')">Reactivate</button>
-          <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
-          <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
-          <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="openDeleteLeadModal('${l.id}')">✕</button>
-        </div>
-      </div>
-    </td>
-  </tr>`;
-
-  return collapsedRow + detailRow;
+function openLeadDetailModal(id){
+  const l = findLeadById(id);
+  if(!l) return;
+  openModal(`${l.business_name} — ${l.contact_name||''}`, leadDetailModalHtml(l), `<button class="btn" onclick="closeModal()">Close</button>`);
 }
 function findLeadById(id){ return allLeadsCache.find(l=>l.id===id); }
 
@@ -1834,54 +1909,60 @@ async function confirmDeleteLead(id){
   await refreshPipeline();
   await renderFollowupTable();
 }
-function getSelectedLeadIds(){
-  return Array.from(document.querySelectorAll('.lead-select-cb:checked')).map(cb=>cb.dataset.id);
+
+/* ===================== FAKE LEAD CLEANUP (admin utility) ===================== */
+// Identification only — matches are never auto-deleted. Same delete
+// authorization level as the existing single-lead delete (anon-key,
+// review-modal confirm, no admin password) since that's how deletes
+// already work everywhere else in this app; the new safeguard here is
+// the per-record review list itself, not an extra password gate.
+const KNOWN_FAKE_LEAD_NAMES = [
+  'brian halligan (sample contact)',
+  'cool robot (sample contact)',
+  'test - verify questionnaire fix',
+  'mohamed zedan',
+  'dy',
+];
+function isLikelyFakeLead(l){
+  const email = (l.email||'').trim().toLowerCase();
+  const biz = (l.business_name||'').trim().toLowerCase();
+  const contact = (l.contact_name||'').trim().toLowerCase();
+  if(email.endsWith('@hubspot.com')) return true;
+  if(/test/.test(biz) || /test/.test(contact)) return true;
+  if(KNOWN_FAKE_LEAD_NAMES.includes(biz) || KNOWN_FAKE_LEAD_NAMES.includes(contact)) return true;
+  return false;
 }
-function toggleSelectAllLeads(checked){
-  document.querySelectorAll('.lead-select-cb').forEach(cb=>{ cb.checked = checked; });
-  updateBulkDeleteBar();
-}
-function updateBulkDeleteBar(){
-  const bar = document.getElementById('bulkDeleteBar');
-  if(!bar) return;
-  const ids = getSelectedLeadIds();
-  const totalCbs = document.querySelectorAll('.lead-select-cb').length;
-  if(ids.length>0){
-    bar.classList.remove('hidden');
-    document.getElementById('bulkDeleteCount').textContent = `${ids.length} lead${ids.length>1?'s':''} selected`;
-  } else {
-    bar.classList.add('hidden');
-  }
-  const selectAll = document.getElementById('selectAllLeads');
-  if(selectAll) selectAll.checked = totalCbs>0 && ids.length===totalCbs;
-}
-function openBulkDeleteModal(){
-  const ids = getSelectedLeadIds();
-  if(!ids.length) return;
-  const leads = ids.map(id=>findLeadById(id)).filter(Boolean);
-  openModal('Delete Selected Leads', `
-    <div style="text-align:center;">
-      <div style="font-size:38px;margin-bottom:12px;">⚠️</div>
-      <p style="font-size:15px;font-weight:600;margin-bottom:14px;">Are you sure you want to permanently delete ${leads.length} lead${leads.length>1?'s':''}?</p>
-      <ul style="text-align:left;margin:0 auto 14px;max-width:340px;color:var(--text);font-size:13.5px;">
-        ${leads.map(l=>`<li>${escapeHtml(l.contact_name)} — ${escapeHtml(l.business_name)}</li>`).join('')}
-      </ul>
-      <p class="muted">All associated communications history, proposals, and follow-up entries for these leads will also be deleted.</p>
-    </div>
+async function scanForFakeLeads(){
+  const leads = await LeadsDB.getAll();
+  const matches = leads.filter(isLikelyFakeLead);
+  if(!matches.length){ toast('No test/sample leads found.','success'); return; }
+  const rows = matches.map(l=>`
+    <label class="list-item" style="cursor:pointer;">
+      <input type="checkbox" class="fake-lead-cb" data-id="${l.id}" style="margin-right:10px;">
+      <div>
+        <div class="list-item-title">${escapeHtml(l.business_name||'(no business name)')}</div>
+        <div class="list-item-sub">${escapeHtml(l.contact_name||'')} ${l.email?'· '+escapeHtml(l.email):''} ${l.hubspot_contact_id?'· HubSpot contact '+escapeHtml(l.hubspot_contact_id):''}</div>
+      </div>
+    </label>`).join('');
+  openModal('Review Test/Sample Leads', `
+    <p class="muted" style="margin-bottom:12px;">Found ${matches.length} possible test/sample lead${matches.length>1?'s':''}. Check the ones you want to permanently delete from Supabase — nothing is deleted until you confirm below.</p>
+    <div class="alert-banner alert-amber" style="display:block;margin-bottom:14px;">⚠️ These records still exist in HubSpot too. <strong>Delete them from HubSpot first</strong> (or make sure they won't be resynced) — otherwise hubspot-webhook-receiver or a HubSpot sync will simply recreate them here on the next sync. This utility only ever touches Supabase.</div>
+    ${rows}
   `, `
     <button class="btn" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-danger" onclick="confirmBulkDeleteLeads()">Delete Permanently</button>
+    <button class="btn btn-danger" onclick="confirmFakeLeadCleanup()">Delete Checked</button>
   `);
 }
-async function confirmBulkDeleteLeads(){
-  const ids = getSelectedLeadIds();
+async function confirmFakeLeadCleanup(){
+  const ids = Array.from(document.querySelectorAll('.fake-lead-cb:checked')).map(cb=>cb.dataset.id);
+  if(!ids.length){ toast('Nothing checked — nothing deleted.'); return; }
   let count = 0;
   for(const id of ids){
     const lead = await deleteLeadCascade(id);
     if(lead) count++;
   }
   closeModal();
-  toast(`${count} lead${count>1?'s':''} deleted.`,'success');
+  toast(`${count} lead${count>1?'s':''} deleted from Supabase. Remember to also delete them in HubSpot if you haven't.`,'success');
   await refreshPipeline();
   await renderFollowupTable();
 }
@@ -1890,7 +1971,7 @@ async function changeLeadStage(id, stage){
   const lead = findLeadById(id);
   const changes = { stage };
   const t = todayISO();
-  if(stage==='Signed'){
+  if(stage==='Closed Won'){
     changes.signed_date = t;
     // Frozen once, the first time a deal is marked Signed — never
     // overwritten again, even if this somehow re-fires or the live lead
@@ -1934,7 +2015,7 @@ async function ensureFollowupForLead(leadId, type){
 }
 async function refreshPipeline(){
   await renderStatCards();
-  await renderLeadsTable();
+  await renderBoard();
 }
 
 /* ===================== PIPELINE: ACTIONS ===================== */

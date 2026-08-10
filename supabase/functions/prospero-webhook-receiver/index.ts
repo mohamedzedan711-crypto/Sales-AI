@@ -23,6 +23,12 @@
 // own `deals` table AND pushed to HubSpot as a Deal object (create or
 // update). Prospero and HubSpot never talk to each other directly.
 //
+// A matched lead's `source` is set to 'Prospero' only if it's currently
+// blank — this fills a gap for leads with no attribution on file, it
+// never overwrites a lead's real original source (HubSpot, Referral,
+// etc.) just because Prospero later touched its deal. Added for the
+// Lead Board Redesign's source-pill card feature.
+//
 // No LLM calls anywhere in this file.
 
 import { getSupabaseAdmin } from '../_shared/supabaseAdmin.ts';
@@ -198,6 +204,18 @@ Deno.serve(async (req) => {
           .eq('id', companyId)
           .maybeSingle();
         hubspotCompanyId = companyRow?.hubspot_company_id || null;
+      }
+
+      // Prospero becomes a real lead.source value the first time it
+      // successfully matches a lead — but only fills a gap, never
+      // overwrites an existing source (e.g. a lead that originally came
+      // in via Referral keeps saying Referral; Prospero touching its
+      // deal later doesn't erase how it actually entered the pipeline).
+      if (leadId) {
+        const { data: leadRow } = await supabaseAdmin.from('leads').select('source').eq('id', leadId).maybeSingle();
+        if (leadRow && !leadRow.source) {
+          await supabaseAdmin.from('leads').update({ source: 'Prospero' }).eq('id', leadId);
+        }
       }
 
       // Upsert into deals — matched by prospero_deal_id if we have one

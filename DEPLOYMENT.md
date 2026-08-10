@@ -34,7 +34,9 @@ HubSpot and Read.ai accounts/keys are **not** needed at deploy time — add them
 
 ## 1. Apply the schema
 
-In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`, then `supabase_schema_v10.sql`, then `supabase_schema_v11.sql`, then `supabase_schema_v12.sql`. All are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9/v12).
+In the Supabase SQL editor (or via `supabase db push`), run in order: `supabase_schema.sql`, then `supabase_schema_v2.sql`, then `supabase_schema_v3.sql`, then `supabase_schema_v4.sql`, then `supabase_schema_v5.sql`, then `supabase_schema_v6.sql`, then `supabase_schema_v7.sql`, then `supabase_schema_v8.sql`, then `supabase_schema_v9.sql`, then `supabase_schema_v10.sql`, then `supabase_schema_v11.sql`, then `supabase_schema_v12.sql`, then `supabase_schema_v13.sql`. All are safe to re-run (guarded with `IF NOT EXISTS` / `ON CONFLICT`, or a `drop policy if exists` for v9/v12; v13's two `UPDATE`s are naturally idempotent).
+
+`supabase_schema_v13.sql` is a **data-only migration for the Lead Board Redesign** — no schema changes, just `UPDATE leads SET stage = 'Closed Won' WHERE stage = 'Signed'` and the equivalent for `'Lost'` → `'Closed Lost'`. This exists because the new Kanban board's 9 columns (New Lead, Contacted, Discovery Booked, Discovery Done, Proposal Sent, Agreement Sent, Nurturing, Closed Won, Closed Lost) renamed two of the app's stage strings. Every other existing stage value is unchanged; `Contacted` is new and starts empty (leads only reach it by being dragged there); `Discovery Done` isn't one of the redesign's 8 named columns but was kept as a 9th rather than silently reassigning those leads. **Run this only after deploying the matching `index.html`** — the old build still writes/reads `'Signed'`/`'Lost'`, so running v13 against the old frontend would make its Signed/Lost filtering and stat cards silently stop matching any lead.
 
 `supabase_schema_v11.sql` adds `hubspot_sync_state` — a singleton cursor row used by `sync-hubspot-contacts` (a second, independent HubSpot→leads sync path; see step 4).
 
@@ -268,6 +270,8 @@ Matching a Prospero event to a lead: exact email match first (no HubSpot call ne
 
 Sales-AI is the middleware between the two systems: a matched Prospero event is upserted into Sales-AI's own `deals` table *and* pushed to HubSpot as a Deal — Prospero and HubSpot never talk to each other directly.
 
+As of the Lead Board Redesign, a matched lead's `source` column is also set to `'Prospero'` — but only when it's currently blank. This never overwrites a lead's real original source (HubSpot, Referral, etc.); it just gives leads with no attribution on file a real value once Prospero touches them, so the board's source pill has something to show.
+
 ## 9. Manual template sends (outreach layer)
 
 Every email — qualification, lead-gen, follow-up, booking — sends only when Mary clicks Send after previewing it, via the new "📄 Templates" button on a lead's detail row in Sales Pipeline. There is no automatic dispatch based on a lead's stage, score, or any webhook event; that's an explicitly out-of-scope future phase. `send-template` is not gated by the auto-send kill switch (step 1/7) — that switch exists to hold back *unattended* sends, and every call into `send-template` is already human-initiated by definition.
@@ -277,6 +281,14 @@ Every email — qualification, lead-gen, follow-up, booking — sends only when 
 Every send writes to `comm_log` and — best-effort, non-blocking — pushes a note to the contact's HubSpot timeline (not a structured property, so it can't accidentally trip a property-based Workflow). Whether Mary's Gmail account also has HubSpot's native Gmail/Sales-extension sync active (which would log the email a second time on HubSpot's side) **could not be confirmed from this codebase** — that's a Google Workspace / HubSpot Sales Hub account setting, not something Sales-AI stores. Check Mary's HubSpot account settings directly once her Gmail is reconnected; if native sync is on, the timeline note here is intentionally redundant rather than harmful.
 
 Qualification overrides (the Qualified / Not Yet / Needs Review buttons next to the deterministic score) follow the same manual, write-back-immediately pattern: an override is a human decision layered on top of the deterministic score, never a replacement for it — both stay on file and visible — and saving one also pushes a HubSpot timeline note the same way.
+
+## 10. Lead Board redesign + fake-lead cleanup
+
+Sales Pipeline's flat table and separate "Cold Leads" table are gone, replaced by a single Kanban board grouped by stage (see step 1's `supabase_schema_v13.sql` note for the stage-rename migration this required). Dragging a card to a different column calls the same `changeLeadStage()` path the old per-row stage dropdown used — it writes `leads.stage` and pushes the HubSpot deal-stage update exactly as before, nothing new to configure. Clicking a card opens the same lead-detail content (Templates button, qualification override, history, etc.) in a modal instead of an expanding table row — none of that content itself changed.
+
+Removed along with the flat table: the generic multi-select "Delete Selected" bulk-delete bar (there's no table row left to host a checkbox column, and the board's card content — per spec — didn't call for one). Single-lead delete is unchanged, now reached via the card's detail modal. The new **Settings → 🧹 Data Cleanup** section is the closest replacement for reviewed bulk deletion going forward — see below.
+
+**Data Cleanup** scans `leads` for likely test/sample rows (`@hubspot.com` emails, "test" in the name, or a short list of known dev-testing entries) and shows them in a review list with a checkbox per row — nothing is deleted until you check the ones you want gone and confirm. It deletes from Supabase only, at the same authorization level as the app's existing lead deletes (no new admin-password gate was added specifically for this, since a per-record review list was the safeguard the spec asked for, not an additional password). **It does not touch HubSpot.** If a "fake" lead still exists in HubSpot when you delete it here, the next `hubspot-webhook-receiver` event or HubSpot sync run will simply recreate it — the modal says this explicitly, but the real fix is deleting the record in HubSpot's own UI too (or before deleting it here).
 
 ## Known gaps to confirm once you have real API access
 
