@@ -71,6 +71,7 @@ export async function verifyHubspotSignatureV3(
   const sourceString = `${method}${fullUrl}${rawBody}${timestampHeader}`;
   const expected = await hmacSha256Base64(clientSecret, sourceString);
 
+  console.log('[DEBUG-WEBHOOK-SIG]', JSON.stringify({ method: method, fullUrl: fullUrl, timestampHeader: timestampHeader, expected: expected, received: signatureHeader }));
   if (expected !== signatureHeader) {
     return { valid: false, reason: 'Signature mismatch — request does not appear to be from HubSpot.' };
   }

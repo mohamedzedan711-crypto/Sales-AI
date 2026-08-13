@@ -644,18 +644,75 @@ function initSupabase(){
   updateSupabaseStatusBadge();
 }
 
-function makeTable(tableName, storageKey){
+// timestampCol (default 'created_at') is the column this table actually
+// uses for its row-creation timestamp — added after finding live that
+// comm_log has NO created_at column at all, only sent_at (leads,
+// proposals, followups, call_notes all do have created_at; comm_log is
+// the one exception). Hardcoding 'created_at' across every table broke
+// comm_log specifically in two places: getAll()'s .order('created_at',
+// ...) threw "column comm_log.created_at does not exist" on every
+// single call — not a pagination/row-cap issue, an unconditional
+// failure regardless of row count — which is the actual reason the
+// History modal was empty, not (or not only) the 1000-row cap; and
+// insert()'s auto-fill (`if(!record.created_at) record.created_at =
+// ...`) silently added a nonexistent column to every comm_log insert
+// attempt from the live app (logComm() and the manual-note modal both
+// call CommLogDB.insert()), which would fail the same way and fall
+// back to localStorage-only — meaning notes logged via the app UI were
+// never actually reaching Supabase. update()'s equivalent `updated_at`
+// auto-fill has the same defect but is currently latent — CommLogDB.
+// update() is never called anywhere in this file.
+function makeTable(tableName, storageKey, timestampCol = 'created_at'){
   return {
     async getAll(){
       if(supabaseClient){
-        const { data, error } = await supabaseClient.from(tableName).select('*').order('created_at',{ascending:false});
-        if(!error) return data || [];
+        // Paginated via .range() — a plain unbounded select() is
+        // silently capped at PostgREST's default 1000-row limit, no
+        // error, no warning. comm_log has 11,514+ rows and grows daily;
+        // leads (935) hasn't hit the wall yet but will. Same fix, same
+        // reasoning, as migration/backfill_monday_item_id.js and
+        // pull_hubspot_engagements_plan.js's selectAllRows() helper.
+        //
+        // Sorted by timestampCol DESC then id ASC, not timestampCol
+        // alone: created_at/sent_at default to now(), which Postgres
+        // evaluates once per STATEMENT, not once per row — every bulk
+        // migration insert (up to 500 rows per call) shares one
+        // identical timestamp value. Paginating on a non-unique sort
+        // key risks a tied cluster splitting across a page boundary
+        // inconsistently between separate queries, silently
+        // duplicating or dropping rows. The id tie-breaker (unique per
+        // row) makes the ordering fully deterministic across every page.
+        //
+        // Any page failing mid-pagination falls through entirely to
+        // the localStorage fallback below, rather than returning
+        // whatever partial data was collected so far — a partial
+        // Supabase result silently treated as complete is exactly the
+        // bug this fix exists to close; better to fall back to a known
+        // (if stale) local cache than return an incomplete "success".
+        const PAGE_SIZE = 1000;
+        const all = [];
+        let from = 0;
+        let failed = false;
+        while(true){
+          const { data, error } = await supabaseClient.from(tableName).select('*')
+            .order(timestampCol,{ascending:false}).order('id',{ascending:true})
+            .range(from, from + PAGE_SIZE - 1);
+          if(error){
+            console.warn(`Supabase getAll() for "${tableName}" failed at offset ${from}, falling back to localStorage: ${error.message}`);
+            failed = true;
+            break;
+          }
+          all.push(...(data||[]));
+          if(!data || data.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
+        }
+        if(!failed) return all;
       }
       return JSON.parse(localStorage.getItem(storageKey) || '[]');
     },
     async insert(record){
       if(!record.id) record.id = uuid();
-      if(!record.created_at) record.created_at = new Date().toISOString();
+      if(!record[timestampCol]) record[timestampCol] = new Date().toISOString();
       if(supabaseClient){
         const { data, error } = await supabaseClient.from(tableName).insert([record]).select();
         if(!error) return data[0];
@@ -667,7 +724,7 @@ function makeTable(tableName, storageKey){
       return record;
     },
     async update(id, changes){
-      changes.updated_at = new Date().toISOString();
+      if(timestampCol === 'created_at') changes.updated_at = new Date().toISOString();
       if(supabaseClient){
         const { error } = await supabaseClient.from(tableName).update(changes).eq('id', id);
         if(!error) return;
@@ -688,7 +745,7 @@ function makeTable(tableName, storageKey){
   };
 }
 const LeadsDB = makeTable('leads','sp_leads');
-const CommLogDB = makeTable('comm_log','sp_comm_log');
+const CommLogDB = makeTable('comm_log','sp_comm_log','sent_at');
 const ProposalsDB = makeTable('proposals','sp_proposals');
 const FollowupsDB = makeTable('followups','sp_followups');
 const CallNotesDB = makeTable('call_notes','sp_call_notes');

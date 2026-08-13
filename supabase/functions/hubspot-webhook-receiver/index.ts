@@ -93,9 +93,10 @@ Deno.serve(async (req) => {
     // Raw body text is needed verbatim for signature verification — must
     // be read before any JSON.parse.
     const rawBody = await req.text();
+    const publicUrl = `https://${new URL(Deno.env.get('SUPABASE_URL')!).host}/functions/v1/hubspot-webhook-receiver`;
     const signatureCheck = await verifyHubspotSignatureV3(
       req.method,
-      req.url,
+      publicUrl,
       rawBody,
       req.headers.get('X-HubSpot-Signature-v3'),
       req.headers.get('X-HubSpot-Request-Timestamp')
@@ -201,7 +202,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, processed, skipped, sourceErrors }), {
+    const responseBody = JSON.stringify({ ok: true, processed, skipped, sourceErrors });
+    console.log('[DEBUG-WEBHOOK-RESPONSE]', responseBody);
+    return new Response(responseBody, {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
