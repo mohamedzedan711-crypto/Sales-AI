@@ -203,6 +203,11 @@ tr:hover td{background:var(--bg-secondary);}
   background:var(--card-bg);border-radius:16px;max-width:620px;width:100%;max-height:88vh;
   display:flex;flex-direction:column;box-shadow:var(--shadow-lg);
 }
+/* Larger variant for content-heavy modals (currently: Notes) — the
+   default 620px/88vh is too cramped once a note list + proposals +
+   follow-ups are all stacked in one body. .modal-body's existing
+   overflow-y:auto still handles internal scrolling past max-height. */
+.modal.modal-lg{max-width:920px;max-height:92vh;}
 .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .modal-header h3{font-size:17px;font-weight:800;color:var(--navy);}
 .modal-close{cursor:pointer;font-size:20px;color:var(--text-muted);background:none;border:none;line-height:1;}
@@ -262,6 +267,13 @@ tr:hover td{background:var(--bg-secondary);}
 .stage-sidebar-name{font-weight:700;font-size:13.5px;color:var(--navy);}
 .lead-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
 @media(max-width:640px){ .lead-grid{grid-template-columns:1fr;} }
+.pipeline-group-section{margin-bottom:22px;}
+.pipeline-group-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;cursor:pointer;border-bottom:2px solid var(--border);margin-bottom:14px;}
+.pipeline-group-header-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.group-collapse-caret{font-size:11px;color:var(--text-muted);flex-shrink:0;}
+.pipeline-group-name{font-weight:800;color:var(--navy);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pipeline-group-actions{display:flex;gap:8px;flex-shrink:0;}
+.pipeline-group-rename-input{width:auto;display:inline-block;font-weight:800;font-size:14px;padding:4px 8px;}
 .lead-card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease;}
 .lead-card:hover{border-color:var(--pink);box-shadow:var(--shadow);}
 .lead-card-biz{font-weight:700;font-size:13.5px;color:var(--navy);margin-bottom:2px;}
@@ -358,6 +370,7 @@ tr:hover td{background:var(--bg-secondary);}
       <div class="nav-tab active" data-tab="pipeline">Sales Pipeline</div>
       <div class="nav-tab" data-tab="inbox">Inbox Manager</div>
       <div class="nav-tab" data-tab="followup">Follow-Up Tracker</div>
+      <div class="nav-tab" data-tab="emails">Emails</div>
       <div class="nav-tab" data-tab="settings">Settings</div>
     </div>
   </div>
@@ -378,7 +391,6 @@ tr:hover td{background:var(--bg-secondary);}
 
   <div class="pipeline-toolbar">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
-      <button class="stage-switcher-btn" onclick="openSidebar()">☰ <span id="currentStageLabel">New Lead</span></button>
       <div class="filter-bar" style="margin-bottom:0;">
         <input type="text" class="search-input" id="leadSearch" placeholder="Search by name or business..." oninput="renderPipelineList()">
         <select id="filterSource" onchange="renderPipelineList()"><option value="">All Sources</option></select>
@@ -389,6 +401,7 @@ tr:hover td{background:var(--bg-secondary);}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn" id="btnSyncHubspot" onclick="syncHubspot()" style="display:none;">↻ Sync HubSpot</button>
+      <button class="btn" onclick="openAddPipelineGroupModal()">+ Add Group</button>
       <button class="btn btn-pink" onclick="openAddLeadModal()">+ Add Lead</button>
     </div>
   </div>
@@ -441,6 +454,27 @@ tr:hover td{background:var(--bg-secondary);}
       <div id="followupEmpty" class="chat-empty hidden">No proposals or agreements out for follow-up yet.</div>
     </div>
   </div>
+
+</section>
+
+<!-- ============ TAB: EMAILS ============ -->
+<section class="tab-content" id="tab-emails">
+  <h1 class="page-title">Emails</h1>
+  <p class="page-sub">HubSpot email history, browsable by lead.</p>
+
+  <div class="pipeline-toolbar">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
+      <div class="filter-bar" style="margin-bottom:0;">
+        <input type="text" class="search-input" id="emailLeadSearch" placeholder="Search by name or business..." oninput="renderEmailsLeadList()">
+        <select id="emailFilterSource" onchange="renderEmailsLeadList()"><option value="">All Sources</option></select>
+        <select id="emailFilterPractice" onchange="renderEmailsLeadList()"><option value="">All Practice Types</option></select>
+        <select id="emailFilterQualification" onchange="renderEmailsLeadList()"><option value="">All Qualification</option></select>
+        <label class="cold-toggle-row"><input type="checkbox" id="emailFilterColdOnly" onchange="renderEmailsLeadList()"> 🔥 Cold only</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="emailsLeadListArea"></div>
 
 </section>
 
@@ -1448,11 +1482,11 @@ async function migrateToSupabase(){
 }
 
 /* ===================== MODAL SYSTEM ===================== */
-function openModal(title, bodyHtml, footerHtml){
+function openModal(title, bodyHtml, footerHtml, extraClass){
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay" onclick="if(event.target.id==='modalOverlay') closeModal()">
-      <div class="modal">
+      <div class="modal${extraClass ? ' '+extraClass : ''}">
         <div class="modal-header"><h3>${title}</h3><button class="modal-close" onclick="closeModal()">&times;</button></div>
         <div class="modal-body" id="modalBody">${bodyHtml}</div>
         <div class="modal-footer" id="modalFooter">${footerHtml||''}</div>
@@ -1556,6 +1590,7 @@ function switchTab(name){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='inbox') renderRescheduleFlags();
+  if(name==='emails') renderEmailsLeadList();
   if(name==='settings'){
     loadAutoSendSetting(); loadQualificationConfig(); loadIntegrationsStatus(); renderAutomationFailures();
     renderTemplatesSettingsCategory(); loadAppLinks();
@@ -1626,13 +1661,20 @@ async function renderStatCards(){
 }
 
 /* ===================== PIPELINE: BOARD ===================== */
-function populateFilterOptions(){
-  const sourceSel = document.getElementById('filterSource');
-  const practiceSel = document.getElementById('filterPractice');
-  const qualSel = document.getElementById('filterQualification');
+// Takes explicit element ids rather than a fixed set, so the Emails
+// tab's filter bar (Part D) can reuse this same population logic
+// against its own <select> elements instead of duplicating it.
+function populateFilterOptionsFor(sourceId, practiceId, qualId){
+  const sourceSel = document.getElementById(sourceId);
+  const practiceSel = document.getElementById(practiceId);
+  const qualSel = document.getElementById(qualId);
   SOURCES.forEach(s=>sourceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
   PRACTICE_TYPES.forEach(s=>practiceSel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
   QUALIFICATION_STATUSES.forEach(s=>qualSel.insertAdjacentHTML('beforeend', `<option value="${s}">${QUALIFICATION_STATUS_LABELS[s]}</option>`));
+}
+function populateFilterOptions(){
+  populateFilterOptionsFor('filterSource','filterPractice','filterQualification');
+  populateFilterOptionsFor('emailFilterSource','emailFilterPractice','emailFilterQualification');
 }
 let allLeadsCache = [];
 // The override (if set) IS the effective status shown on a card — it's
@@ -1679,18 +1721,16 @@ function leadCardHtml(l){
   </div>`;
 }
 
-/* ---- Sidebar stage switcher + 2-column card grid ---- */
-// Which stage's cards the grid is currently showing. Defaults to 'New
-// Lead' — there's no separate "stage menu" page anymore; the sidebar
-// (below) is the only way to change this.
-let selectedStage = 'New Lead';
-
-function getFilteredLeads(){
-  const search = document.getElementById('leadSearch').value.toLowerCase();
-  const fSource = document.getElementById('filterSource').value;
-  const fPractice = document.getElementById('filterPractice').value;
-  const fQual = document.getElementById('filterQualification').value;
-  const coldOnly = document.getElementById('filterColdOnly').checked;
+/* ---- 2-column card grid, grouped by pipeline_groups (see below) ---- */
+// Takes explicit element ids rather than a fixed set, so the Emails
+// tab's filter bar (Part D) can reuse the exact same filtering rules
+// against its own DOM elements instead of duplicating the logic.
+function getFilteredLeadsFromFilters(searchId, sourceId, practiceId, qualId, coldId){
+  const search = document.getElementById(searchId).value.toLowerCase();
+  const fSource = document.getElementById(sourceId).value;
+  const fPractice = document.getElementById(practiceId).value;
+  const fQual = document.getElementById(qualId).value;
+  const coldOnly = document.getElementById(coldId).checked;
   const t = todayISO();
   return allLeadsCache.filter(l=>{
     if(search && !(`${l.business_name} ${l.contact_name}`.toLowerCase().includes(search))) return false;
@@ -1701,63 +1741,216 @@ function getFilteredLeads(){
     return true;
   });
 }
+function getFilteredLeads(){
+  return getFilteredLeadsFromFilters('leadSearch','filterSource','filterPractice','filterQualification','filterColdOnly');
+}
+// pipeline_groups replaces the old single-stage sidebar-select view
+// (openSidebar/selectStage/selectedStage) as of Part B — every group
+// is shown at once, ordered by sort_order, rather than picking one
+// stage at a time from a hidden sidebar. "Stage" (STAGES/l.stage)
+// is a separate, still-fully-intact concept (funnel position, edited
+// from the lead detail modal) — pipeline_group_id is about where the
+// lead ORIGINATED (which Monday board group, or "HubSpot Leads").
+let pipelineGroupsCache = [];
+let renamingGroupId = null;
+const collapsedPipelineGroups = new Set();
+
+async function loadPipelineGroups(){
+  if(!supabaseClient){ pipelineGroupsCache = []; return; }
+  const { data, error } = await supabaseClient.from('pipeline_groups').select('*').order('sort_order',{ascending:true});
+  if(error){ console.warn('Could not load pipeline_groups:', error.message); pipelineGroupsCache = []; return; }
+  pipelineGroupsCache = data || [];
+}
 async function renderPipelineList(){
   allLeadsCache = await LeadsDB.getAll();
+  await loadPipelineGroups();
   renderLeadGrid(getFilteredLeads());
 }
 function renderLeadGrid(leads){
-  document.getElementById('currentStageLabel').textContent = selectedStage;
-  const stageLeads = leads.filter(l=>(l.stage||'(no stage)')===selectedStage);
-  const cards = stageLeads.length ? stageLeads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this stage match your filters.</div>`;
-  document.getElementById('pipelineListArea').innerHTML = `<div class="lead-grid">${cards}</div>`;
+  const byGroupId = new Map();
+  for(const l of leads){
+    const key = l.pipeline_group_id || '__ungrouped__';
+    if(!byGroupId.has(key)) byGroupId.set(key, []);
+    byGroupId.get(key).push(l);
+  }
+  const sections = pipelineGroupsCache.map(g=>pipelineGroupSectionHtml(g, byGroupId.get(g.id)||[], false));
+  const ungrouped = byGroupId.get('__ungrouped__') || [];
+  // Leads with no pipeline_group_id (pre-Part-A-backfill data, or a
+  // manually-added lead) still show up here rather than silently
+  // vanishing from the pipeline — same "don't hide unknown data"
+  // reasoning as the old sidebar's extraStages handling.
+  if(ungrouped.length){
+    sections.push(pipelineGroupSectionHtml({id:'__ungrouped__', name:'(Ungrouped)'}, ungrouped, true));
+  }
+  document.getElementById('pipelineListArea').innerHTML = sections.join('') ||
+    `<div class="list-empty-note">No pipeline groups yet — click + Add Group to create one.</div>`;
 }
-// Sidebar is a slide-in overlay (built fresh each time it opens, so its
-// counts are always current) rather than a persistent column — closing
-// it never touches selectedStage/the grid underneath, so anything
-// already showing stays exactly as it was unless a different stage is
-// actually clicked.
-function openSidebar(){
-  const leads = getFilteredLeads();
-  // Any lead whose stage isn't one of the 9 known stages (stale data, a
-  // direct DB edit, etc.) still gets a row rather than silently
-  // vanishing from the sidebar.
-  const known = new Set(STAGES);
-  const extraStages = [...new Set(leads.filter(l=>!known.has(l.stage)).map(l=>l.stage||'(no stage)'))];
-  const allStages = [...STAGES, ...extraStages];
-  const rows = allStages.map(stage=>{
-    const count = leads.filter(l=>(l.stage||'(no stage)')===stage).length;
-    // Single-quoted JS string literal inside a double-quoted HTML
-    // attribute — NOT JSON.stringify(), which emits double quotes and
-    // would terminate the onclick="..." attribute early and silently
-    // drop the whole handler (this exact bug bit the previous stage
-    // menu implementation).
-    const safeStage = String(stage).replace(/'/g, "\\'");
-    return `<div class="stage-sidebar-row${stage===selectedStage?' active':''}" onclick="selectStage('${safeStage}')">
-      <span class="stage-sidebar-name">${escapeHtml(stage)}</span>
-      <span class="stage-count-badge">${count}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('sidebarRoot').innerHTML = `
-    <div class="sidebar-overlay" id="stageSidebarOverlay" onclick="if(event.target.id==='stageSidebarOverlay') closeSidebar()">
-      <div class="stage-sidebar">
-        <div class="stage-sidebar-header"><span>Stages</span><button class="modal-close" onclick="closeSidebar()">&times;</button></div>
-        <div class="stage-sidebar-body">${rows}</div>
+function pipelineGroupSectionHtml(g, leads, isUngrouped){
+  const collapsed = collapsedPipelineGroups.has(g.id);
+  const cards = leads.length ? leads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this group match your filters.</div>`;
+  const nameHtml = renamingGroupId===g.id
+    ? `<input type="text" class="pipeline-group-rename-input" id="renameInput_${g.id}" value="${escapeHtml(g.name)}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')saveRenamePipelineGroup('${g.id}');if(event.key==='Escape')cancelRenamePipelineGroup();">`
+    : `<span class="pipeline-group-name">${escapeHtml(g.name)}</span>`;
+  const actionsHtml = isUngrouped ? '' : (renamingGroupId===g.id
+    ? `<div class="pipeline-group-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="saveRenamePipelineGroup('${g.id}')">Save</button>
+        <button class="btn btn-sm" onclick="cancelRenamePipelineGroup()">Cancel</button>
+      </div>`
+    : `<div class="pipeline-group-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="startRenamePipelineGroup('${g.id}')">Rename</button>
+        <button class="btn btn-sm" onclick="openRemovePipelineGroupModal('${g.id}')">Remove</button>
+      </div>`);
+  return `<div class="pipeline-group-section">
+    <div class="pipeline-group-header" onclick="toggleGroupCollapse('${g.id}')">
+      <div class="pipeline-group-header-left">
+        <span class="group-collapse-caret">${collapsed?'▶':'▼'}</span>
+        ${nameHtml}
+        <span class="stage-count-badge">${leads.length}</span>
       </div>
-    </div>`;
+      ${actionsHtml}
+    </div>
+    ${collapsed ? '' : `<div class="lead-grid">${cards}</div>`}
+  </div>`;
 }
+function toggleGroupCollapse(id){
+  if(collapsedPipelineGroups.has(id)) collapsedPipelineGroups.delete(id); else collapsedPipelineGroups.add(id);
+  renderLeadGrid(getFilteredLeads());
+}
+// Shared #sidebarRoot teardown — NOT pipeline-group-specific. Also
+// used by the Settings sidebar (openSettingsSidebar()) and the
+// keydown/Escape handler. Accidentally dropped once already while
+// removing the old stage-sidebar code this session; restored here
+// since it's genuinely shared infrastructure, not stage-only.
 function closeSidebar(){
   document.getElementById('sidebarRoot').innerHTML = '';
 }
-function selectStage(stage){
-  selectedStage = stage;
-  closeSidebar();
-  renderPipelineList();
+function openAddPipelineGroupModal(){
+  if(!supabaseClient){ toast('Connect Supabase in Settings first.','error'); return; }
+  openModal('Add Group', `
+    <div class="form-row"><label>Group Name</label><input type="text" id="newPipelineGroupName" placeholder="e.g. Trade Show Leads"></div>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" onclick="confirmAddPipelineGroup()">Create Group</button>
+  `);
+}
+async function confirmAddPipelineGroup(){
+  const name = (document.getElementById('newPipelineGroupName').value||'').trim();
+  if(!name){ toast('Enter a group name.','error'); return; }
+  if(pipelineGroupsCache.some(g=>g.name===name)){ toast('A group with that name already exists.','error'); return; }
+  const nextSortOrder = pipelineGroupsCache.length ? Math.max(...pipelineGroupsCache.map(g=>g.sort_order))+1 : 0;
+  const { error } = await supabaseClient.from('pipeline_groups').insert([{ name, sort_order: nextSortOrder }]);
+  closeModal();
+  if(error){ toast('Could not create group: '+error.message,'error'); return; }
+  toast('Group created.','success');
+  await refreshPipeline();
+}
+function startRenamePipelineGroup(id){
+  renamingGroupId = id;
+  renderLeadGrid(getFilteredLeads());
+}
+function cancelRenamePipelineGroup(){
+  renamingGroupId = null;
+  renderLeadGrid(getFilteredLeads());
+}
+async function saveRenamePipelineGroup(id){
+  const input = document.getElementById(`renameInput_${id}`);
+  const trimmed = (input.value||'').trim();
+  const g = pipelineGroupsCache.find(x=>x.id===id);
+  if(!trimmed){ toast('Group name cannot be empty.','error'); return; }
+  if(trimmed===g.name){ renamingGroupId = null; renderLeadGrid(getFilteredLeads()); return; }
+  if(pipelineGroupsCache.some(x=>x.id!==id && x.name===trimmed)){ toast('A group with that name already exists.','error'); return; }
+  renamingGroupId = null;
+  const { error } = await supabaseClient.from('pipeline_groups').update({ name: trimmed }).eq('id', id);
+  if(error){ toast('Could not rename group: '+error.message,'error'); return; }
+  toast('Group renamed.','success');
+  await refreshPipeline();
+}
+// Judgment call (flagged, per the task spec): removing a group never
+// cascade-deletes or reassigns its leads — it's blocked outright with
+// a toast if the group isn't genuinely empty (checked against
+// allLeadsCache, not the currently-filtered view, so a search/filter
+// that happens to hide a group's leads can't make it look removable).
+function openRemovePipelineGroupModal(id){
+  const g = pipelineGroupsCache.find(x=>x.id===id);
+  if(!g) return;
+  const count = allLeadsCache.filter(l=>l.pipeline_group_id===id).length;
+  if(count > 0){
+    toast(`Can't remove "${g.name}" — it still has ${count} lead${count>1?'s':''} in it. Move them to another group first.`,'error');
+    return;
+  }
+  openModal('Remove Group', `
+    <p style="font-size:15px;font-weight:600;">Remove the empty group "${escapeHtml(g.name)}"?</p>
+    <p class="muted" style="margin-top:8px;">This can't be undone.</p>
+  `, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmRemovePipelineGroup('${id}')">Remove Group</button>
+  `);
+}
+async function confirmRemovePipelineGroup(id){
+  const { error } = await supabaseClient.from('pipeline_groups').delete().eq('id', id);
+  closeModal();
+  if(error){ toast('Could not remove group: '+error.message,'error'); return; }
+  toast('Group removed.','success');
+  await refreshPipeline();
+}
+
+/* ===================== EMAILS TAB (Gmail-style) ===================== */
+// Same filter bar/logic as Sales Pipeline (getFilteredLeadsFromFilters,
+// reused rather than reinvented), but a flat list — no pipeline_group
+// sectioning here, per the task spec. Drill-down: lead list -> that
+// lead's email subjects (newest first, comm_log type='email' only)
+// -> full email body in a modal. emailsCurrentLeadEmails caches the
+// subject-list query's own result so clicking a subject doesn't need
+// a second round-trip to Supabase.
+let emailsCurrentLeadEmails = [];
+async function renderEmailsLeadList(){
+  allLeadsCache = await LeadsDB.getAll();
+  const leads = getFilteredLeadsFromFilters('emailLeadSearch','emailFilterSource','emailFilterPractice','emailFilterQualification','emailFilterColdOnly');
+  const rows = leads.length ? leads.map(l=>`
+    <div class="list-item list-item-clickable" onclick="openEmailsForLead('${l.id}')">
+      <div>
+        <div class="list-item-title">${escapeHtml(l.business_name||'(no business name)')}</div>
+        <div class="list-item-sub">${escapeHtml(l.contact_name||'')}${l.email?' · '+escapeHtml(l.email):''}</div>
+      </div>
+      ${sourcePillHtml(l)}
+    </div>`).join('') : `<div class="list-empty-note">No leads match your filters.</div>`;
+  document.getElementById('emailsLeadListArea').innerHTML = rows;
+}
+async function openEmailsForLead(leadId){
+  const l = findLeadById(leadId) || allLeadsCache.find(x=>x.id===leadId);
+  emailsCurrentLeadEmails = [];
+  if(supabaseClient){
+    // Direct .eq('lead_id',...) query, same reasoning as the Notes
+    // modal's getNotesForLead() — comm_log is 11,500+ rows, too large
+    // to page through client-side just to find one lead's emails.
+    const { data, error } = await supabaseClient.from('comm_log').select('*')
+      .eq('lead_id', leadId).eq('type', 'email').order('sent_at', { ascending: false });
+    if(!error) emailsCurrentLeadEmails = data || [];
+    else console.warn(`Could not load emails for lead ${leadId}: ${error.message}`);
+  }
+  const rows = emailsCurrentLeadEmails.length ? emailsCurrentLeadEmails.map(e=>`
+    <div class="list-item list-item-clickable" onclick="openEmailDetailModal('${e.id}')">
+      <div class="list-item-title">${escapeHtml(e.subject||'(no subject)')}</div>
+      <div class="list-item-sub">${new Date(e.sent_at).toLocaleString()}</div>
+    </div>`).join('') : `<p class="muted">No emails logged for this lead yet.</p>`;
+  document.getElementById('emailsLeadListArea').innerHTML = `
+    <button class="btn btn-sm" style="margin-bottom:14px;" onclick="renderEmailsLeadList()">← Back to leads</button>
+    <h3 style="color:var(--navy);margin-bottom:10px;">${escapeHtml(l ? l.business_name : '')}</h3>
+    ${rows}`;
+}
+function openEmailDetailModal(id){
+  const e = emailsCurrentLeadEmails.find(x=>x.id===id);
+  if(!e) return;
+  openModal(e.subject || '(no subject)', `
+    <p class="muted" style="margin-bottom:12px;">${new Date(e.sent_at).toLocaleString()}</p>
+    <div class="proposal-view" style="white-space:pre-wrap;">${escapeHtml(e.content||'')}</div>
+  `, `<button class="btn" onclick="closeModal()">Close</button>`, 'modal-lg');
 }
 
 /* ---- Lead detail: a modal on top of the grid, not a page navigation.
    Closing it (X, clicking outside, or Escape — see the keydown listener
-   near closeModal()) leaves selectedStage/the grid untouched, so the
-   person lands back exactly where they were. ---- */
+   near closeModal()) leaves the grouped grid untouched, so the person
+   lands back exactly where they were. ---- */
 function openLeadDetailModal(id){
   const l = findLeadById(id);
   if(!l) return;
@@ -2046,7 +2239,7 @@ function leadDetailModalHtml(l){
       <button class="btn btn-sm btn-pink" onclick="openTemplatesModal('${l.id}')">📄 Templates</button>
       ${l.qualified === true ? `<button class="btn btn-sm btn-pink" onclick="openBookMeetingModal('${l.id}')">Book Meeting</button>` : ''}
       ${l.meeting_prep_brief ? `<button class="btn btn-sm" onclick="openMeetingPrepModal('${l.id}')">🧠 Prep Brief</button>` : ''}
-      <button class="btn btn-sm" onclick="openHistoryModal('${l.id}')">View History</button>
+      <button class="btn btn-sm" onclick="openNotesModal('${l.id}')">Notes</button>
       <button class="btn btn-sm" onclick="openEditLeadModal('${l.id}')">Edit</button>
       <button class="btn btn-sm btn-delete-x" title="Delete lead" onclick="closeModal();openDeleteLeadModal('${l.id}')">✕</button>
     </div>`;
@@ -2334,22 +2527,134 @@ function openMeetingPrepModal(id){
   `, `<button class="btn" onclick="closeModal()">Close</button>`);
 }
 
-/* View history modal */
-async function openHistoryModal(id){
+/* Notes modal (formerly "History"). The note list is a BLACKLIST —
+   everything except the raw HubSpot sync types (email, meeting) shows
+   here: monday_note, manual_note, deal_signed, nurture, recap,
+   followup, book_call, qualification_form_submission, and anything
+   else logComm()/the webhook ever writes into comm_log. Emails get
+   their own "Emails" tab (Part D) instead. Proposals/Follow-Ups
+   sections are unchanged. A live `select distinct type, count(*) from
+   comm_log` (2026-08-14) found only email/meeting/monday_note actually
+   exist in production today — every "manual" type below has never
+   successfully written a row yet (this app's comm_log insert bug,
+   fixed earlier this session, silently dropped them to localStorage-
+   only) — but the blacklist is what the spec calls for either way,
+   and every one of the excluded types needs to keep working once
+   inserts actually succeed. notesModalLeadId/notesModalEditingId are
+   module state so Save/Cancel/Edit can re-render just this modal
+   without a full page refresh — same reasoning as the pipeline-group
+   inline rename. */
+let notesModalLeadId = null;
+let notesModalEditingId = null;
+const EXCLUDED_NOTE_TYPES = ['email', 'meeting'];
+
+async function openNotesModal(id){
+  notesModalLeadId = id;
+  notesModalEditingId = null;
+  await renderNotesModal();
+}
+// Queries comm_log filtered by lead_id directly (.eq(), server-side)
+// rather than CommLogDB.getAll() + client-side filter — comm_log is
+// 11,500+ rows and growing; paginating through the whole table just
+// to find one lead's handful of notes every time this modal opens,
+// or after every Edit/Add Note save, would make the modal feel slow
+// exactly where it's supposed to now be more usable (see the max-
+// width/height change below). Falls back to the slower getAll()+
+// filter path only if Supabase itself isn't reachable. .not('type',
+// 'in', ...) rather than a client-side filter — same reasoning, keep
+// the exclusion server-side so a growing comm_log never needs to be
+// paginated through client-side just for this.
+async function getNotesForLead(id){
+  if(supabaseClient){
+    const { data, error } = await supabaseClient.from('comm_log').select('*')
+      .eq('lead_id', id).not('type', 'in', `(${EXCLUDED_NOTE_TYPES.join(',')})`).order('sent_at', { ascending: false });
+    if(!error) return data || [];
+    console.warn(`Direct comm_log query for lead ${id} failed, falling back to getAll(): ${error.message}`);
+  }
+  return (await CommLogDB.getAll()).filter(c=>c.lead_id===id && !EXCLUDED_NOTE_TYPES.includes(c.type));
+}
+async function renderNotesModal(){
+  const id = notesModalLeadId;
   const l = findLeadById(id);
-  const comms = (await CommLogDB.getAll()).filter(c=>c.lead_id===id);
+  const comms = await getNotesForLead(id);
+  comms.sort((a,b)=> new Date(b.sent_at) - new Date(a.sent_at));
   const proposals = (await ProposalsDB.getAll()).filter(p=>p.lead_id===id);
   const followups = (await FollowupsDB.getAll()).filter(f=>f.lead_id===id);
-  let html = `<h4 style="margin-bottom:10px;color:var(--navy);">Communications</h4>`;
-  html += comms.length ? comms.map(c=>{
-    const isSigned = c.type==='deal_signed';
-    return `<div class="list-item"${isSigned ? ' style="border-color:#1a9e5c;"' : ''}><div><div class="list-item-title">${isSigned ? '🎉 ' : ''}${escapeHtml(isSigned ? 'Deal Signed' : (c.subject||c.type))}</div><div class="list-item-sub">${isSigned ? escapeHtml(c.content)+' · ' : ''}${new Date(c.sent_at).toLocaleString()}</div></div></div>`;
-  }).join('') : `<p class="muted" style="margin-bottom:14px;">No communications logged yet.</p>`;
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <h4 style="color:var(--navy);margin:0;">Notes</h4>
+    <button class="btn btn-sm btn-pink" onclick="openAddNoteForm()">+ Add Note</button>
+  </div>`;
+  html += `<div id="addNoteFormArea"></div>`;
+  html += comms.length ? comms.map(c=>noteRowHtml(c)).join('') : `<p class="muted" style="margin-bottom:14px;">No notes logged yet.</p>`;
   html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Proposals</h4>`;
   html += proposals.length ? proposals.map(p=>`<div class="list-item"><div><div class="list-item-title">${fmtMoney(p.value)}/mo</div><div class="list-item-sub">${new Date(p.created_at).toLocaleDateString()} · ${p.status}</div></div></div>`).join('') : `<p class="muted" style="margin-bottom:14px;">No proposals yet.</p>`;
   html += `<h4 style="margin:18px 0 10px;color:var(--navy);">Follow-Ups</h4>`;
   html += followups.length ? followups.map(f=>`<div class="list-item"><div><div class="list-item-title">${f.type} · ${f.status}</div><div class="list-item-sub">Sent ${fmtDate(f.sent_date)} · ${f.count} follow-up(s) · Next ${fmtDate(f.next_date)}</div></div></div>`).join('') : `<p class="muted">No follow-ups yet.</p>`;
-  openModal(`History — ${l.business_name}`, html, `<button class="btn" onclick="closeModal()">Close</button>`);
+  openModal(`Notes — ${l.business_name}`, html, `<button class="btn" onclick="closeModal()">Close</button>`, 'modal-lg');
+}
+function noteRowHtml(c){
+  if(notesModalEditingId === c.id){
+    return `<div class="list-item">
+      <div style="flex:1;min-width:220px;">
+        <textarea id="editNoteContent_${c.id}" rows="3" style="width:100%;margin-bottom:8px;">${escapeHtml(c.content||'')}</textarea>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm btn-pink" onclick="saveNoteEdit('${c.id}')">Save</button>
+          <button class="btn btn-sm" onclick="cancelNoteEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  // Edit affordance never appears on HubSpot-sourced rows (they aren't
+  // manually created) — 'call' is included defensively even though
+  // it's already covered by EXCLUDED_NOTE_TYPES today, in case that
+  // list is ever loosened without updating this too.
+  const isHubspotSourced = c.type==='email' || c.type==='meeting' || c.type==='call';
+  // Deal-signed rows keep the same 🎉/green-border treatment the old
+  // History modal gave them — restored here after the blacklist
+  // change let deal_signed back into this list.
+  const isSigned = c.type==='deal_signed';
+  const title = isSigned ? 'Deal Signed' : (c.subject || (c.type==='monday_note' ? 'Monday note' : 'Note'));
+  return `<div class="list-item"${isSigned ? ' style="border-color:#1a9e5c;"' : ''}>
+    <div style="flex:1;min-width:220px;">
+      <div class="list-item-title">${isSigned ? '🎉 ' : ''}${escapeHtml(title)}</div>
+      <div class="list-item-sub" style="white-space:pre-wrap;">${escapeHtml(c.content||'')}</div>
+      <div class="list-item-sub">${new Date(c.sent_at).toLocaleString()}</div>
+    </div>
+    ${isHubspotSourced ? '' : `<button class="btn btn-sm" onclick="startNoteEdit('${c.id}')">Edit</button>`}
+  </div>`;
+}
+async function startNoteEdit(id){
+  notesModalEditingId = id;
+  await renderNotesModal();
+}
+async function cancelNoteEdit(){
+  notesModalEditingId = null;
+  await renderNotesModal();
+}
+async function saveNoteEdit(id){
+  const content = document.getElementById(`editNoteContent_${id}`).value;
+  await CommLogDB.update(id, { content });
+  notesModalEditingId = null;
+  toast('Note updated.','success');
+  await renderNotesModal();
+}
+function openAddNoteForm(){
+  const area = document.getElementById('addNoteFormArea');
+  area.innerHTML = `
+    <div class="form-row">
+      <textarea id="newNoteContent" rows="3" placeholder="Type a note..." autofocus></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn btn-pink btn-sm" onclick="saveNewNote()">Save Note</button>
+      <button class="btn btn-sm" onclick="document.getElementById('addNoteFormArea').innerHTML=''">Cancel</button>
+    </div>`;
+}
+async function saveNewNote(){
+  const content = (document.getElementById('newNoteContent').value||'').trim();
+  if(!content){ toast('Enter some note text first.','error'); return; }
+  await CommLogDB.insert({ lead_id: notesModalLeadId, type: 'manual_note', subject: 'Manual note', content, sent_at: new Date().toISOString() });
+  toast('Note added.','success');
+  await renderNotesModal();
 }
 
 /* Add / Edit lead modal */

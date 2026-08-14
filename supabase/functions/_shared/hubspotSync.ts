@@ -156,6 +156,32 @@ export async function maybeLogQualificationFormSubmission(
     .eq('id', leadId);
 }
 
+const HUBSPOT_PIPELINE_GROUP_NAME = 'HubSpot Leads';
+
+// Looks up the "HubSpot Leads" pipeline_groups.id for defaulting new,
+// non-Monday-sourced leads onto it (see schema v21). Failure (table
+// not migrated yet, no matching row) is logged and swallowed, not
+// thrown — a missing pipeline group must never block lead creation
+// itself, it just leaves pipeline_group_id null for that row, the
+// same state every lead was already in before v21.
+async function getHubspotLeadsGroupId(supabaseAdmin: any): Promise<string | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('pipeline_groups')
+      .select('id')
+      .eq('name', HUBSPOT_PIPELINE_GROUP_NAME)
+      .maybeSingle();
+    if (error || !data) {
+      console.warn(`Could not resolve "${HUBSPOT_PIPELINE_GROUP_NAME}" pipeline group (has schema v21 run?): ${error?.message || 'no matching row'}`);
+      return null;
+    }
+    return data.id;
+  } catch (e) {
+    console.warn(`pipeline_groups lookup threw: ${(e as Error).message}`);
+    return null;
+  }
+}
+
 // Upserts a leads row from a HubSpot Contact record (as returned by
 // getHubspotContactById). If a matching lead already exists, only fills
 // in hubspot_contact_id / company_id when those are currently null —
@@ -182,6 +208,7 @@ export async function upsertLeadFromHubspotContact(
   }
 
   const contactName = `${props.firstname || ''} ${props.lastname || ''}`.trim();
+  const pipelineGroupId = await getHubspotLeadsGroupId(supabaseAdmin);
   const { data: inserted, error } = await supabaseAdmin
     .from('leads')
     .insert([{
@@ -192,6 +219,7 @@ export async function upsertLeadFromHubspotContact(
       company_id: companyId || null,
       source: 'HubSpot',
       stage: 'New Lead',
+      pipeline_group_id: pipelineGroupId,
     }])
     .select('id')
     .single();
