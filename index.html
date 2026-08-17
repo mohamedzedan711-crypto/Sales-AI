@@ -1753,7 +1753,15 @@ function getFilteredLeads(){
 // lead ORIGINATED (which Monday board group, or "HubSpot Leads").
 let pipelineGroupsCache = [];
 let renamingGroupId = null;
-const collapsedPipelineGroups = new Set();
+// Tracks which groups the user has explicitly opened — empty on load,
+// so every group starts COLLAPSED by default (Part 1). Deliberately an
+// "expanded" allowlist rather than a "collapsed" denylist: a denylist
+// would need to be pre-populated with every group id (including
+// "__ungrouped__" and any newly-added group) to start closed, which
+// breaks the moment a group is added after page load. An empty
+// allowlist has no such gap — anything not explicitly opened is
+// closed, with zero special-casing needed for new/ungrouped groups.
+const expandedPipelineGroups = new Set();
 
 async function loadPipelineGroups(){
   if(!supabaseClient){ pipelineGroupsCache = []; return; }
@@ -1766,32 +1774,52 @@ async function renderPipelineList(){
   await loadPipelineGroups();
   renderLeadGrid(getFilteredLeads());
 }
-function renderLeadGrid(leads){
+// Buckets a lead array by pipeline_group_id ('__ungrouped__' for null/
+// missing) — shared by Sales Pipeline and the Emails tab (Part 3) so
+// both group leads identically rather than each reimplementing it.
+function bucketLeadsByPipelineGroup(leads){
   const byGroupId = new Map();
   for(const l of leads){
     const key = l.pipeline_group_id || '__ungrouped__';
     if(!byGroupId.has(key)) byGroupId.set(key, []);
     byGroupId.get(key).push(l);
   }
-  const sections = pipelineGroupsCache.map(g=>pipelineGroupSectionHtml(g, byGroupId.get(g.id)||[], false));
+  return byGroupId;
+}
+function renderLeadGrid(leads){
+  const byGroupId = bucketLeadsByPipelineGroup(leads);
+  const opts = { showActions: true, expandedSet: expandedPipelineGroups, toggleFnName: 'togglePipelineGroupCollapse' };
+  const sections = pipelineGroupsCache.map(g=>{
+    const groupLeads = byGroupId.get(g.id) || [];
+    const cardsHtml = `<div class="lead-grid">${groupLeads.length ? groupLeads.map(l=>leadCardHtml(l)).join('') : '<div class="list-empty-note">No leads in this group match your filters.</div>'}</div>`;
+    return pipelineGroupSectionHtml(g, groupLeads, cardsHtml, opts);
+  });
   const ungrouped = byGroupId.get('__ungrouped__') || [];
   // Leads with no pipeline_group_id (pre-Part-A-backfill data, or a
   // manually-added lead) still show up here rather than silently
   // vanishing from the pipeline — same "don't hide unknown data"
   // reasoning as the old sidebar's extraStages handling.
   if(ungrouped.length){
-    sections.push(pipelineGroupSectionHtml({id:'__ungrouped__', name:'(Ungrouped)'}, ungrouped, true));
+    const cardsHtml = `<div class="lead-grid">${ungrouped.map(l=>leadCardHtml(l)).join('')}</div>`;
+    sections.push(pipelineGroupSectionHtml({id:'__ungrouped__', name:'(Ungrouped)'}, ungrouped, cardsHtml, {...opts, isUngrouped:true}));
   }
   document.getElementById('pipelineListArea').innerHTML = sections.join('') ||
     `<div class="list-empty-note">No pipeline groups yet — click + Add Group to create one.</div>`;
 }
-function pipelineGroupSectionHtml(g, leads, isUngrouped){
-  const collapsed = collapsedPipelineGroups.has(g.id);
-  const cards = leads.length ? leads.map(l=>leadCardHtml(l)).join('') : `<div class="list-empty-note">No leads in this group match your filters.</div>`;
-  const nameHtml = renamingGroupId===g.id
+// Shared presentational wrapper for one collapsible pipeline_groups
+// section — used by both Sales Pipeline and the Emails tab (Part 3).
+// Callers own their own inner markup (cardsHtml, already fully built —
+// a 2-col lead-grid for Pipeline, stacked list-items for Emails) and
+// their own collapse-state Set/toggle function via opts, so this stays
+// a single shared wrapper instead of two near-duplicate renderers.
+// opts: { isUngrouped, showActions, expandedSet, toggleFnName }
+function pipelineGroupSectionHtml(g, leads, cardsHtml, opts){
+  const { isUngrouped=false, showActions=true, expandedSet, toggleFnName } = opts;
+  const collapsed = !expandedSet.has(g.id);
+  const nameHtml = (showActions && renamingGroupId===g.id)
     ? `<input type="text" class="pipeline-group-rename-input" id="renameInput_${g.id}" value="${escapeHtml(g.name)}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')saveRenamePipelineGroup('${g.id}');if(event.key==='Escape')cancelRenamePipelineGroup();">`
     : `<span class="pipeline-group-name">${escapeHtml(g.name)}</span>`;
-  const actionsHtml = isUngrouped ? '' : (renamingGroupId===g.id
+  const actionsHtml = (!showActions || isUngrouped) ? '' : (renamingGroupId===g.id
     ? `<div class="pipeline-group-actions" onclick="event.stopPropagation()">
         <button class="btn btn-sm" onclick="saveRenamePipelineGroup('${g.id}')">Save</button>
         <button class="btn btn-sm" onclick="cancelRenamePipelineGroup()">Cancel</button>
@@ -1801,7 +1829,7 @@ function pipelineGroupSectionHtml(g, leads, isUngrouped){
         <button class="btn btn-sm" onclick="openRemovePipelineGroupModal('${g.id}')">Remove</button>
       </div>`);
   return `<div class="pipeline-group-section">
-    <div class="pipeline-group-header" onclick="toggleGroupCollapse('${g.id}')">
+    <div class="pipeline-group-header" onclick="${toggleFnName}('${g.id}')">
       <div class="pipeline-group-header-left">
         <span class="group-collapse-caret">${collapsed?'▶':'▼'}</span>
         ${nameHtml}
@@ -1809,11 +1837,11 @@ function pipelineGroupSectionHtml(g, leads, isUngrouped){
       </div>
       ${actionsHtml}
     </div>
-    ${collapsed ? '' : `<div class="lead-grid">${cards}</div>`}
+    ${collapsed ? '' : cardsHtml}
   </div>`;
 }
-function toggleGroupCollapse(id){
-  if(collapsedPipelineGroups.has(id)) collapsedPipelineGroups.delete(id); else collapsedPipelineGroups.add(id);
+function togglePipelineGroupCollapse(id){
+  if(expandedPipelineGroups.has(id)) expandedPipelineGroups.delete(id); else expandedPipelineGroups.add(id);
   renderLeadGrid(getFilteredLeads());
 }
 // Shared #sidebarRoot teardown — NOT pipeline-group-specific. Also
@@ -1896,27 +1924,80 @@ async function confirmRemovePipelineGroup(id){
 
 /* ===================== EMAILS TAB (Gmail-style) ===================== */
 // Same filter bar/logic as Sales Pipeline (getFilteredLeadsFromFilters,
-// reused rather than reinvented), but a flat list — no pipeline_group
-// sectioning here, per the task spec. Drill-down: lead list -> that
-// lead's email subjects (newest first, comm_log type='email' only)
-// -> full email body in a modal. emailsCurrentLeadEmails caches the
-// subject-list query's own result so clicking a subject doesn't need
-// a second round-trip to Supabase.
+// reused rather than reinvented). Part 3: the lead list is now grouped
+// by pipeline_groups exactly like Sales Pipeline — same ordering, same
+// collapsed-by-default behavior, same "HubSpot Leads"/"(Ungrouped)"
+// catch-all — via the shared bucketLeadsByPipelineGroup()/
+// pipelineGroupSectionHtml() helpers, not a second implementation.
+// Collapse/expand state is tracked in its OWN Set (expandedEmailsGroups,
+// below), separate from Sales Pipeline's expandedPipelineGroups — there
+// was no existing multi-tab precedent to match (collapse state was
+// only ever consumed by one tab before this), so this was flagged and
+// asked about explicitly rather than assumed; proceeding with
+// independent-per-tab (the recommended option) since no answer came
+// back. Drill-down: lead list -> that lead's email subjects (newest
+// first, comm_log type='email' only) -> full email body in a modal.
+// emailsCurrentLeadEmails caches the subject-list query's own result so
+// clicking a subject doesn't need a second round-trip to Supabase.
 let emailsCurrentLeadEmails = [];
-async function renderEmailsLeadList(){
-  allLeadsCache = await LeadsDB.getAll();
-  const leads = getFilteredLeadsFromFilters('emailLeadSearch','emailFilterSource','emailFilterPractice','emailFilterQualification','emailFilterColdOnly');
-  const rows = leads.length ? leads.map(l=>`
-    <div class="list-item list-item-clickable" onclick="openEmailsForLead('${l.id}')">
+const expandedEmailsGroups = new Set();
+// Render-generation guard — fixes a real race condition found live:
+// switchTab() calls renderEmailsLeadList() WITHOUT awaiting it (see
+// switchTab()'s own source), so its full LeadsDB.getAll() can still be
+// in flight when the user immediately searches + clicks into a lead.
+// Both renderEmailsLeadList() and openEmailsForLead() write to the
+// SAME #emailsLeadListArea element with no sequencing between them —
+// whichever call happened to resolve last used to win, so a slow,
+// now-stale tab-switch render could silently overwrite a freshly-
+// rendered, correct email drill-down back to the flat lead list. Not
+// a query bug (proven live: the same comm_log filter returns all 666
+// real rows for Ona Skincare when nothing races it) — a stale-async
+// bug. Every entry point bumps this token and captures its own value;
+// anything that resolves after a newer call has started recognizes
+// it's stale and discards its own result instead of writing it.
+let emailsRenderToken = 0;
+function emailsLeadRowHtml(l){
+  return `<div class="list-item list-item-clickable" onclick="openEmailsForLead('${l.id}')">
       <div>
         <div class="list-item-title">${escapeHtml(l.business_name||'(no business name)')}</div>
         <div class="list-item-sub">${escapeHtml(l.contact_name||'')}${l.email?' · '+escapeHtml(l.email):''}</div>
       </div>
       ${sourcePillHtml(l)}
-    </div>`).join('') : `<div class="list-empty-note">No leads match your filters.</div>`;
-  document.getElementById('emailsLeadListArea').innerHTML = rows;
+    </div>`;
+}
+// Pure render from already-loaded caches (allLeadsCache/pipelineGroupsCache)
+// — no network call, so toggling a group's collapse state (below) can
+// re-render instantly without re-fetching, same split as Sales
+// Pipeline's renderLeadGrid() vs renderPipelineList().
+function renderEmailsGroupedList(leads){
+  const byGroupId = bucketLeadsByPipelineGroup(leads);
+  const opts = { showActions: false, expandedSet: expandedEmailsGroups, toggleFnName: 'toggleEmailsGroupCollapse' };
+  const sections = pipelineGroupsCache.map(g=>{
+    const groupLeads = byGroupId.get(g.id) || [];
+    const cardsHtml = groupLeads.length ? groupLeads.map(emailsLeadRowHtml).join('') : `<div class="list-empty-note">No leads in this group match your filters.</div>`;
+    return pipelineGroupSectionHtml(g, groupLeads, cardsHtml, opts);
+  });
+  const ungrouped = byGroupId.get('__ungrouped__') || [];
+  if(ungrouped.length){
+    sections.push(pipelineGroupSectionHtml({id:'__ungrouped__', name:'(Ungrouped)'}, ungrouped, ungrouped.map(emailsLeadRowHtml).join(''), {...opts, isUngrouped:true}));
+  }
+  document.getElementById('emailsLeadListArea').innerHTML = sections.join('') ||
+    `<div class="list-empty-note">No pipeline groups yet — add one from Sales Pipeline.</div>`;
+}
+function toggleEmailsGroupCollapse(id){
+  if(expandedEmailsGroups.has(id)) expandedEmailsGroups.delete(id); else expandedEmailsGroups.add(id);
+  renderEmailsGroupedList(getFilteredLeadsFromFilters('emailLeadSearch','emailFilterSource','emailFilterPractice','emailFilterQualification','emailFilterColdOnly'));
+}
+async function renderEmailsLeadList(){
+  const myToken = ++emailsRenderToken;
+  allLeadsCache = await LeadsDB.getAll();
+  await loadPipelineGroups(); // in case the Emails tab is opened before Sales Pipeline ever loads groups
+  if(myToken !== emailsRenderToken) return; // superseded — e.g. the user already clicked into a lead
+  const leads = getFilteredLeadsFromFilters('emailLeadSearch','emailFilterSource','emailFilterPractice','emailFilterQualification','emailFilterColdOnly');
+  renderEmailsGroupedList(leads);
 }
 async function openEmailsForLead(leadId){
+  const myToken = ++emailsRenderToken;
   const l = findLeadById(leadId) || allLeadsCache.find(x=>x.id===leadId);
   emailsCurrentLeadEmails = [];
   if(supabaseClient){
@@ -1925,18 +2006,87 @@ async function openEmailsForLead(leadId){
     // to page through client-side just to find one lead's emails.
     const { data, error } = await supabaseClient.from('comm_log').select('*')
       .eq('lead_id', leadId).eq('type', 'email').order('sent_at', { ascending: false });
+    if(myToken !== emailsRenderToken) return; // superseded while the query was in flight
     if(!error) emailsCurrentLeadEmails = data || [];
     else console.warn(`Could not load emails for lead ${leadId}: ${error.message}`);
   }
+  if(myToken !== emailsRenderToken) return;
   const rows = emailsCurrentLeadEmails.length ? emailsCurrentLeadEmails.map(e=>`
     <div class="list-item list-item-clickable" onclick="openEmailDetailModal('${e.id}')">
       <div class="list-item-title">${escapeHtml(e.subject||'(no subject)')}</div>
       <div class="list-item-sub">${new Date(e.sent_at).toLocaleString()}</div>
     </div>`).join('') : `<p class="muted">No emails logged for this lead yet.</p>`;
   document.getElementById('emailsLeadListArea').innerHTML = `
-    <button class="btn btn-sm" style="margin-bottom:14px;" onclick="renderEmailsLeadList()">← Back to leads</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <button class="btn btn-sm" onclick="renderEmailsLeadList()">← Back to leads</button>
+      <button class="btn btn-sm btn-pink" onclick="openComposeEmailModal('${leadId}')">✎ Write Email</button>
+    </div>
     <h3 style="color:var(--navy);margin-bottom:10px;">${escapeHtml(l ? l.business_name : '')}</h3>
     ${rows}`;
+}
+/* ---- Compose (Part 4) — wired to the existing send-lead-email Edge
+   Function, same payload shape/pattern already used by sendAIDraftEmail()
+   ({leadId, subject, body}). The To field is shown read-only, not
+   editable: send-lead-email ignores whatever "to" the client sends and
+   always resolves the recipient server-side from leads.email — an
+   editable To field would silently do nothing, which is worse than not
+   offering it. Gmail OAuth is not connected yet (confirmed live against
+   api_credentials) — Send is fully wired but will fail with a Gmail-
+   not-connected error until that's done; this is expected, not a bug,
+   per the task this was built from. */
+function composeEmailModalHtml(l){
+  return `
+    ${l.email ? '' : `<div class="alert-banner alert-amber" style="display:block;margin-bottom:14px;">⚠️ This lead has no email on file — send-lead-email will reject this send until one is added.</div>`}
+    <div class="form-row"><label>To</label><input type="email" id="composeTo" value="${escapeHtml(l.email||'')}" disabled></div>
+    <p class="muted" style="font-size:12px;margin:-8px 0 14px;">Always sends to the email on file for this lead — send-lead-email resolves the recipient server-side, so this isn't editable here.</p>
+    <div class="form-row"><label>Subject</label><input type="text" id="composeSubject" placeholder="Subject"></div>
+    <div class="form-row"><label>Body</label><textarea id="composeBody" rows="10" placeholder="Write your message..."></textarea></div>
+  `;
+}
+function openComposeEmailModal(leadId){
+  const l = findLeadById(leadId) || allLeadsCache.find(x=>x.id===leadId);
+  if(!l) return;
+  openModal(`Write Email — ${escapeHtml(l.business_name||'')}`, composeEmailModalHtml(l), `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-pink" id="composeSendBtn" onclick="sendComposedEmail('${leadId}')">Send</button>
+  `, 'modal-lg');
+}
+async function sendComposedEmail(leadId){
+  const subject = (document.getElementById('composeSubject').value||'').trim();
+  const body = (document.getElementById('composeBody').value||'').trim();
+  if(!subject || !body){ toast('Subject and body are both required.','error'); return; }
+
+  const btn = document.getElementById('composeSendBtn');
+  const originalLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
+
+  const supabaseUrl = getSupabaseUrl();
+  const anonKey = getSupabaseAnonKey();
+  if(!supabaseUrl || !anonKey){ toast('Connect Supabase in Settings to send email.','error'); if(btn){ btn.disabled=false; btn.textContent=originalLabel; } return; }
+  try{
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-lead-email`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+anonKey, 'apikey': anonKey },
+      body: JSON.stringify({ leadId, subject, body })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Request failed');
+    if(data.skipped){
+      toast('Auto-Send is OFF in Settings — this email was not sent.','error');
+      if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+      return;
+    }
+    toast('Email sent.','success');
+    // Logged client-side so the sent email shows up in this lead's
+    // thread list immediately — send-lead-email itself only updates
+    // leads.last_contact, it doesn't write to comm_log.
+    await CommLogDB.insert({ lead_id: leadId, type: 'email', subject, content: body, sent_at: new Date().toISOString() });
+    closeModal();
+    await openEmailsForLead(leadId);
+  }catch(e){
+    toast('Could not send the email — '+e.message,'error');
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
 }
 function openEmailDetailModal(id){
   const e = emailsCurrentLeadEmails.find(x=>x.id===id);
